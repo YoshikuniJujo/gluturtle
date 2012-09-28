@@ -1,21 +1,29 @@
 module Main where
 
-import Graphics.UI.WX.Turtle
-import Graphics.UI.WX.Turtle.Field
-import Graphics.UI.WX(start, command, on, Prop((:=)), interval, timer)
+import Graphics.UI.GLUT.Turtle
+import Graphics.UI.GLUT.Turtle.Field
+import Graphics.UI.GLUT(initialize, addTimerCallback, mainLoop)
 import System.Random
+import System.Environment
 import Control.Monad
 import Control.Concurrent
 import Data.Word
 
 main :: IO ()
-main = start $ do
-	putStrLn "testNewTurtle"
+main = do
+	prgName <- getProgName
+	rawArgs <- getArgs
+	args <- initialize prgName rawArgs
 	f <- openField
 	t <- newTurtle f
 	preprocess t
 	(x0, y0) <- position t
-	timer (fFrame f) [interval := 150, on command := draw t x0 y0]
+	addTimerCallback 100 $ timerProc $ draw t x0 y0
+	mainLoop
+
+timerProc act = do
+	act
+	addTimerCallback 20 $ timerProc act
 
 randomWord8 :: IO Word8
 randomWord8 = fmap fromIntegral $ (randomRIO (0, 255) :: IO Int)

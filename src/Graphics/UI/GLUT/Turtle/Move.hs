@@ -1,4 +1,4 @@
-module Graphics.UI.WX.Turtle.Move(
+module Graphics.UI.GLUT.Turtle.Move(
 	-- * types
 	Field,
 	Coordinates(..),
@@ -31,8 +31,8 @@ module Graphics.UI.WX.Turtle.Move(
 	addCharacter
 ) where
 
-import Graphics.UI.WX.Turtle.State(TurtleState(..), makeShape)
-import Graphics.UI.WX.Turtle.Field(
+import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
+import Graphics.UI.GLUT.Turtle.Field(
 	Field, Layer, Character, Coordinates(..),
 	openField, closeField, waitField, coordinates, topleft, center,
 	fieldSize, forkField, flushField, clearLayer,

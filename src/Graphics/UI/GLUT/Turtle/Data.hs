@@ -1,4 +1,4 @@
-module Graphics.UI.WX.Turtle.Data(
+module Graphics.UI.GLUT.Turtle.Data(
 	-- * tables
 	shapeTable, speedTable) where
 

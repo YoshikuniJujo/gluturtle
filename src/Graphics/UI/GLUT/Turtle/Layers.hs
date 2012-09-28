@@ -1,4 +1,4 @@
-module Graphics.UI.WX.Turtle.Layers(
+module Graphics.UI.GLUT.Turtle.Layers(
 	-- * types
 	Layers,
 	Layer,

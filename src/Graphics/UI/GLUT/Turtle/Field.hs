@@ -49,6 +49,9 @@ module Graphics.UI.GLUT.Turtle.Field(
 	addCharacter
 ) where
 
+import System.Exit
+import Control.Applicative
+
 import Graphics.UI.GLUT(
 	createWindow, Vertex2(..), renderPrimitive, vertex, PrimitiveMode(..),
 	preservingMatrix, GLfloat, swapBuffers, ($=), displayCallback,
@@ -86,6 +89,11 @@ data Field = Field{
 	fAction :: IORef (IO ()),
 	fActions :: IORef [IO ()],
 
+	fString :: IORef String,
+	fString2 :: IORef String,
+
+	fInputtext :: IORef (String -> IO Bool),
+
 	fLayers :: IORef Layers
  }
 
@@ -102,26 +110,54 @@ openField = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	action <- newIORef $ return ()
 	actions <- newIORef []
+	str <- newIORef "coi rodo"
+	str2 <- newIORef "hello"
+	inputtext <- newIORef $ const $ return True
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size 640 480
 	createWindow "field"
-	displayCallback $= (sequence_ =<< readIORef actions) -- testAction
+	displayCallback $= (do
+		sequence_ =<< readIORef actions) -- testAction
 	G.addTimerCallback 10 (timerAction $ do
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
 		sequence_ =<< readIORef actions
 		join $ readIORef action
+		G.lineWidth $= 1.0
+		preservingMatrix $ do
+			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
+			G.clearColor $= G.Color4 0 0 0 0
+			G.color (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+			w <- G.stringWidth G.Roman "Stroke font"
+			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
+				(-1600) 0 ::
+				G.Vector3 GLfloat)
+			G.renderString G.Roman =<< readIORef str
+		preservingMatrix $ do
+			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
+			G.clearColor $= G.Color4 0 0 0 0
+			G.color (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+			w <- G.stringWidth G.Roman "Stroke font"
+			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
+				(-1400) 0 ::
+				G.Vector3 GLfloat)
+			G.renderString G.Roman =<< readIORef str2
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	print "main loop go"
 	print "main loop"
-	return Field{
+	let f = Field{
 		fCoordinates = CoordCenter,
 		fLayers = layers,
 		fAction = action,
-		fActions = actions
+		fActions = actions,
+		fString = str,
+		fString2 = str2,
+		fInputtext = inputtext
 	 }
+	G.keyboardMouseCallback $= Just (keyboardProc f)
+	return f
 
 timerAction act = do
 	act
@@ -214,7 +250,7 @@ makeCharacterAction ps =
 positionToVertex3 :: Position -> Vertex2 GLfloat
 positionToVertex3 (Center x y) =
 	Vertex2 (fromRational $ toRational x / 300)
-		(fromRational $ toRational y / 300)
+		(fromRational $ toRational y / 300 + 0.2)
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 	String -> IO ()
@@ -227,7 +263,8 @@ fillRectangle :: Field -> Layer -> Position -> Double -> Double -> Color -> IO (
 fillRectangle f l p w h clr = return ()
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
-fillPolygon f l ps clr lc lw = return ()
+fillPolygon f l ps clr lc lw = do
+	atomicModifyIORef_ (fActions f) (makeCharacterAction ps :)
 
 --------------------------------------------------------------------------------
 
@@ -247,7 +284,7 @@ clearCharacter ch = character ch $ return ()
 --------------------------------------------------------------------------------
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
-oninputtext _ _ = return ()
+oninputtext = writeIORef . fInputtext
 
 onclick, onrelease :: Field -> (Int -> Double -> Double -> IO Bool) -> IO ()
 onclick _ _ = return ()
@@ -264,3 +301,15 @@ onkeypress _ _ = return ()
 
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer f t fun = return ()
+
+keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
+keyboardProc f (G.Char 'q') _ _ _ = exitWith ExitSuccess
+keyboardProc f (G.Char '\r') G.Down _ _ = do
+	str <- readIORef $ fString f
+	($ str) =<< readIORef (fInputtext f)
+	writeIORef (fString2 f) str
+	writeIORef (fString f) ""
+keyboardProc f (G.Char c) state _ _
+	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])
+	| otherwise = return ()
+keyboardProc _ _ _ _ _ = return ()

@@ -10,8 +10,16 @@ main = do
 	args <- initialize prgName rawArgs
 	f <- openField
 	t <- newTurtle f
+	oninputtext f (processInput t)
 --	speed t "slowest"
-	threadDelay 1000000
-	left t 45
-	forward t 100
+	pencolor t (255, 255, 255)
+--	threadDelay 1000000
+--	left t 45
+--	forward t 100
 	mainLoop
+
+processInput t "forward" = forward t 100 >> return True
+processInput t "left" = left t 90 >> return True
+processInput t "begin" = beginfill t >> return True
+processInput t "end" = endfill t >> return True
+processInput t _ = return True

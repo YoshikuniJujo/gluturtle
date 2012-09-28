@@ -167,8 +167,8 @@ drawLayer f l drw = addDraw l (drw, drw)
 
 drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
 drawLine f l w c p q = do
-	atomicModifyIORef_ (fActions f) (makeLineAction p q :)
---	G.addTimerCallback 1 $ makeLineAction p q
+	atomicModifyIORef_ (fActions f) (makeLineAction p q c :)
+--	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
 	flush
 {- do
@@ -192,13 +192,18 @@ testAction = do
 		 ]
 --	swapBuffers
 
-makeLineAction :: Position -> Position -> IO ()
-makeLineAction p q = do
+makeLineAction :: Position -> Position -> Color -> IO ()
+makeLineAction p q c = do
 	preservingMatrix $ do
+		G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
 		renderPrimitive Lines $ mapM_ vertex [
 			positionToVertex3 p,
 			positionToVertex3 q ]
 --	swapBuffers
+
+colorToColor4 :: Color -> G.Color4 GLfloat
+colorToColor4 (RGB r g b) = G.Color4
+	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 
 makeCharacterAction :: [Position] -> IO ()
 makeCharacterAction ps =
@@ -232,7 +237,7 @@ drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f ch fclr clr sh lw p q =
 	writeIORef (fAction f) $ do
-		makeLineAction p q
+		makeLineAction p q clr
 		makeCharacterAction sh
 
 clearCharacter :: Character -> IO ()

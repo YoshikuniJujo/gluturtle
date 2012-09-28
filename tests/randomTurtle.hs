@@ -16,6 +16,8 @@ main = do
 	args <- initialize prgName rawArgs
 	f <- openField
 	t <- newTurtle f
+--	pencolor t "white"
+	pencolor t (255, 255, 255)
 	preprocess t
 	(x0, y0) <- position t
 	addTimerCallback 100 $ timerProc $ draw t x0 y0

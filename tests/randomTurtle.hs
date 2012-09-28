@@ -17,6 +17,7 @@ main = do
 	f <- openField
 	t <- newTurtle f
 --	pencolor t "white"
+	pensize t 3
 	pencolor t (255, 255, 255)
 	preprocess t
 	(x0, y0) <- position t

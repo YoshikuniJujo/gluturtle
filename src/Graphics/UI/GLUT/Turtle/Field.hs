@@ -128,7 +128,7 @@ openField = do
 		preservingMatrix $ do
 			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
 			G.clearColor $= G.Color4 0 0 0 0
-			G.color (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+			G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
 			w <- G.stringWidth G.Roman "Stroke font"
 			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
 				(-1600) 0 ::
@@ -137,7 +137,7 @@ openField = do
 		preservingMatrix $ do
 			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
 			G.clearColor $= G.Color4 0 0 0 0
-			G.color (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+			G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
 			w <- G.stringWidth G.Roman "Stroke font"
 			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
 				(-1400) 0 ::

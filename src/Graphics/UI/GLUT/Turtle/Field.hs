@@ -36,6 +36,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 	drawCharacterAndLine,
 	clearCharacter,
 
+	outputString,
+
 	-- * event driven
 	oninputtext,
 	onclick,
@@ -114,11 +116,11 @@ openField = do
 	action <- newIORef $ return ()
 	actions <- newIORef []
 	str <- newIORef ""
-	str2 <- newIORef ["coi rodo"]
+	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
-	initialWindowSize $= Size 640 480
+	initialWindowSize $= Size 640 640
 	createWindow "field"
 	displayCallback $= (do
 		sequence_ =<< readIORef actions) -- testAction
@@ -128,8 +130,8 @@ openField = do
 		sequence_ =<< readIORef actions
 		join $ readIORef action
 		G.lineWidth $= 1.0
-		printString (-2.5) (-1600) =<< readIORef str
-		zipWithM_ (printString (-2.5)) [-1400, -1200 .. -800] =<< readIORef str2
+		printString (-2.5) (-1800) =<< readIORef str
+		zipWithM_ (printString (-2.5)) [-1600, -1400 .. 0] =<< readIORef str2
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
@@ -152,8 +154,7 @@ printString x y str =
 		G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
 		w <- G.stringWidth G.Roman "Stroke font"
 		G.translate (G.Vector3 (x * (fromIntegral w))
-			y 0 ::
-			G.Vector3 GLfloat)
+			y 0 :: G.Vector3 GLfloat)
 		G.renderString G.Roman str
 
 timerAction act = do
@@ -298,6 +299,9 @@ clearCharacter ch = character ch $ return ()
 
 --------------------------------------------------------------------------------
 
+outputString :: Field -> String -> IO ()
+outputString f = atomicModifyIORef_ (fString2 f) . (:)
+
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext
 
@@ -318,12 +322,12 @@ ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer f t fun = return ()
 
 keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-keyboardProc f (G.Char 'q') _ _ _ = exitWith ExitSuccess
 keyboardProc f (G.Char '\r') G.Down _ _ = do
 	str <- readIORef $ fString f
-	($ str) =<< readIORef (fInputtext f)
 	atomicModifyIORef_ (fString2 f) (str :)
 	writeIORef (fString f) ""
+	continue <- ($ str) =<< readIORef (fInputtext f)
+	unless continue $ G.leaveMainLoop
 keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
 keyboardProc f (G.Char c) state _ _
 	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])

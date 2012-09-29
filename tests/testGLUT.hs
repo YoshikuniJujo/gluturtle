@@ -1,5 +1,5 @@
 import Graphics.UI.GLUT.Turtle
-import Graphics.UI.GLUT
+import Graphics.UI.GLUT hiding (position)
 import Control.Concurrent
 
 import System.Environment
@@ -10,7 +10,7 @@ main = do
 	args <- initialize prgName rawArgs
 	f <- openField
 	t <- newTurtle f
-	oninputtext f (processInput t)
+	oninputtext f (processInput f t)
 --	speed t "slowest"
 	fillcolor t (255, 255, 255)
 	pencolor t (255, 255, 255)
@@ -19,16 +19,18 @@ main = do
 --	forward t 100
 	mainLoop
 
-processInput t "forward" = forward t 100 >> return True
-processInput t "left" = left t 90 >> return True
-processInput t "begin" = beginfill t >> return True
-processInput t "end" = endfill t >> return True
-processInput t "turtle" = shape t "turtle" >> return True
-processInput t "stamp" = stamp t >> return True
-processInput t "bold" = pensize t 3 >> return True
-processInput t "big" = shapesize t 3 3 >> return True
-processInput t "blue" = pencolor t (0, 0, 255) >> return True
-processInput t "fblue" = fillcolor t (0, 0, 255) >> return True
-processInput t "yellow" = pencolor t (255, 255, 0) >> return True
-processInput t "normal" = pensize t 1 >> return True
-processInput t _ = return True
+processInput _ t "forward" = forward t 100 >> return True
+processInput _ t "left" = left t 90 >> return True
+processInput _ t "begin" = beginfill t >> return True
+processInput _ t "end" = endfill t >> return True
+processInput _ t "turtle" = shape t "turtle" >> return True
+processInput _ t "stamp" = stamp t >> return True
+processInput _ t "bold" = pensize t 3 >> return True
+processInput _ t "big" = shapesize t 3 3 >> return True
+processInput _ t "blue" = pencolor t (0, 0, 255) >> return True
+processInput _ t "fblue" = fillcolor t (0, 0, 255) >> return True
+processInput _ t "yellow" = pencolor t (255, 255, 0) >> return True
+processInput _ t "normal" = pensize t 1 >> return True
+processInput _ t "exit" = return False
+processInput f t "position" = position t >>= outputString f . show >> return True
+processInput _ _ _ = return True

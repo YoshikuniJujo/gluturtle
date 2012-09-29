@@ -28,7 +28,9 @@ module Graphics.UI.GLUT.Turtle.Move(
 	onkeypress,
 	ontimer,
 	addLayer,
-	addCharacter
+	addCharacter,
+
+	outputString
 ) where
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
@@ -39,7 +41,8 @@ import Graphics.UI.GLUT.Turtle.Field(
 	clearCharacter, addLayer, addCharacter,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
-	drawImage, undoField, undoLayer, drawCharacter, drawCharacterAndLine)
+	drawImage, undoField, undoLayer, drawCharacter, drawCharacterAndLine,
+	outputString)
 import Text.XML.YJSVG(SVG(..), Position(..))
 import qualified Text.XML.YJSVG as S(topleft)
 

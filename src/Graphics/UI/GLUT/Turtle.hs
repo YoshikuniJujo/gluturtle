@@ -91,7 +91,9 @@ module Graphics.UI.GLUT.Turtle(
 	isdown,
 	isvisible,
 	windowWidth,
-	windowHeight
+	windowHeight,
+
+	outputString
 ) where
 
 import Graphics.UI.GLUT.Turtle.Data(shapeTable, speedTable)
@@ -103,7 +105,8 @@ import Graphics.UI.GLUT.Turtle.Move(
 	Field, Coordinates(..), openField, closeField, waitField,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
 	addLayer, clearLayer, addCharacter, clearCharacter, moveTurtle,
-	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer)
+	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
+	outputString)
 import Text.XML.YJSVG(SVG(..), Position(..), Color(..))
 import qualified Text.XML.YJSVG as S(center, topleft)
 

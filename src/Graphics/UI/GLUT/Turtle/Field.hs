@@ -51,6 +51,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 
 import System.Exit
 import Control.Applicative
+import Control.Monad
 
 import Graphics.UI.GLUT.Turtle.Triangles
 
@@ -92,7 +93,7 @@ data Field = Field{
 	fActions :: IORef [IO ()],
 
 	fString :: IORef String,
-	fString2 :: IORef String,
+	fString2 :: IORef [String],
 
 	fInputtext :: IORef (String -> IO Bool),
 
@@ -113,7 +114,7 @@ openField = do
 	action <- newIORef $ return ()
 	actions <- newIORef []
 	str <- newIORef ""
-	str2 <- newIORef "coi rodo"
+	str2 <- newIORef ["coi rodo"]
 	inputtext <- newIORef $ const $ return True
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
@@ -127,24 +128,8 @@ openField = do
 		sequence_ =<< readIORef actions
 		join $ readIORef action
 		G.lineWidth $= 1.0
-		preservingMatrix $ do
-			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
-			G.clearColor $= G.Color4 0 0 0 0
-			G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
-			w <- G.stringWidth G.Roman "Stroke font"
-			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
-				(-1600) 0 ::
-				G.Vector3 GLfloat)
-			G.renderString G.Roman =<< readIORef str
-		preservingMatrix $ do
-			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
-			G.clearColor $= G.Color4 0 0 0 0
-			G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
-			w <- G.stringWidth G.Roman "Stroke font"
-			G.translate (G.Vector3 (-2.5 * (fromIntegral w))
-				(-1400) 0 ::
-				G.Vector3 GLfloat)
-			G.renderString G.Roman =<< readIORef str2
+		printString (-2.5) (-1600) =<< readIORef str
+		zipWithM_ (printString (-2.5)) [-1400, -1200 .. -800] =<< readIORef str2
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
@@ -158,6 +143,18 @@ openField = do
 	 }
 	G.keyboardMouseCallback $= Just (keyboardProc f)
 	return f
+
+printString :: GLfloat -> GLfloat -> String -> IO ()
+printString x y str =
+	preservingMatrix $ do
+		G.scale (0.0005 :: GLfloat)  0.0005 0.0005
+		G.clearColor $= G.Color4 0 0 0 0
+		G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
+		w <- G.stringWidth G.Roman "Stroke font"
+		G.translate (G.Vector3 (x * (fromIntegral w))
+			y 0 ::
+			G.Vector3 GLfloat)
+		G.renderString G.Roman str
 
 timerAction act = do
 	act
@@ -325,7 +322,7 @@ keyboardProc f (G.Char 'q') _ _ _ = exitWith ExitSuccess
 keyboardProc f (G.Char '\r') G.Down _ _ = do
 	str <- readIORef $ fString f
 	($ str) =<< readIORef (fInputtext f)
-	writeIORef (fString2 f) str
+	atomicModifyIORef_ (fString2 f) (str :)
 	writeIORef (fString f) ""
 keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
 keyboardProc f (G.Char c) state _ _

@@ -147,8 +147,6 @@ openField = do
 			G.renderString G.Roman =<< readIORef str2
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
-	print "main loop go"
-	print "main loop"
 	let f = Field{
 		fCoordinates = CoordCenter,
 		fLayers = layers,
@@ -247,7 +245,6 @@ colorToColor4 (RGB r g b) = G.Color4
 makeCharacterAction :: [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction ps c lc lw =
 	preservingMatrix $ do
-		print ps
 		G.color $ colorToColor4 c
 		renderPrimitive Triangles $ mapM_ (vertex . positionToVertex3) $
 			map posToPosition $ triangleToPositions $
@@ -332,6 +329,6 @@ keyboardProc f (G.Char '\r') G.Down _ _ = do
 	writeIORef (fString f) ""
 keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
 keyboardProc f (G.Char c) state _ _
-	| state == G.Down = print c >> atomicModifyIORef_ (fString f) (++ [c])
+	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])
 	| otherwise = return ()
 keyboardProc _ _ _ _ _ = return ()

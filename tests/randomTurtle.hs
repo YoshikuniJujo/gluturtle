@@ -28,7 +28,7 @@ timerProc act = do
 	addTimerCallback 20 $ timerProc act
 
 randomWord8 :: IO Word8
-randomWord8 = fmap fromIntegral $ (randomRIO (0, 255) :: IO Int)
+randomWord8 = fmap fromIntegral (randomRIO (0, 255) :: IO Int)
 
 randomTurtle :: Turtle -> IO ()
 randomTurtle t = do

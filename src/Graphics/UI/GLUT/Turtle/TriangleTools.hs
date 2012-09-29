@@ -57,9 +57,9 @@ draw pl trs = do
 	_args <- initialize prgName rawArgs
 	_ <- createWindow "GLTest"
 	displayCallback $= do
-		color $ (Color4 1 1 1 0 :: Color4 GLfloat)
+		color (Color4 1 1 1 0 :: Color4 GLfloat)
 		drawTriangles trs -- [((50, 50), (-50, -50), (0, 50))]
-		color $ (Color4 1 0 0 0 :: Color4 GLfloat)
+		color (Color4 1 0 0 0 :: Color4 GLfloat)
 		drawPolyline pl -- [(50, 50), (-50, -50), (0, 50), (-50, 80)]
 		swapBuffers
 		flush

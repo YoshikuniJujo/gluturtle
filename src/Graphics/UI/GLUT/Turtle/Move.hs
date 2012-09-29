@@ -41,14 +41,13 @@ import Graphics.UI.GLUT.Turtle.Field(
 	clearCharacter, addLayer, addCharacter,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
-	drawImage, undoField, undoLayer, drawCharacter, drawCharacterAndLine,
+	drawImage, undoField, drawCharacter, drawCharacterAndLine,
 	outputString)
 import Text.XML.YJSVG(SVG(..), Position(..))
 import qualified Text.XML.YJSVG as S(topleft)
 
 import Control.Concurrent(threadDelay)
 import Control.Monad(when, unless, forM_)
-import Control.Monad.Tools(unlessM)
 import Data.Maybe(isJust)
 
 --------------------------------------------------------------------------------
@@ -61,7 +60,6 @@ moveTurtle f c l t0 t1 = do
 	when (undo t1) $ fl $ do
 		when (clear t0) redraw
 		when (isJust $ draw t0) $ do
---			unlessM (undoLayer l) $ clearLayer l >> redraw
 			undoField f
 			when (visible t1) $ drawTtl (direction t0) $ position t0
 	when (visible t1) $ do

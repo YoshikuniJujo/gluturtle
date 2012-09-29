@@ -34,8 +34,10 @@ library
 executable		testTurtle
   Hs-source-dirs:	tests, src
   Main-is:		testGLUT.hs
+  Ghc-options:		-Wall
 
 executable		randomTurtle
   Hs-source-dirs:	tests, src
   Main-is:		randomTurtle.hs
   Build-depends:	random
+  Ghc-options:		-Wall

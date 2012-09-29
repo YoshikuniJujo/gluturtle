@@ -51,8 +51,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	addCharacter
 ) where
 
-import System.Exit
-import Control.Applicative
 import Control.Monad
 
 import Graphics.UI.GLUT.Turtle.Triangles
@@ -61,28 +59,20 @@ import Graphics.UI.GLUT(
 	createWindow, Vertex2(..), renderPrimitive, vertex, PrimitiveMode(..),
 	preservingMatrix, GLfloat, swapBuffers, ($=), displayCallback,
 	initialDisplayMode, initialWindowSize, Size(..),
-	DisplayMode(..), flush, Vertex3(..)
+	DisplayMode(..), flush
  )
 import qualified Graphics.UI.GLUT as G
 
 import Graphics.UI.GLUT.Turtle.Layers(
-	Layers, Layer, Character, newLayers, redrawLayers,
-	makeLayer, background, addDraw, undoLayer, clearLayer,
+	Layers, Layer, Character, newLayers,
+	makeLayer, undoLayer, clearLayer,
 	makeCharacter, character)
 import Text.XML.YJSVG(Position(..), Color(..))
 
-import Control.Monad(when, unless, forever, replicateM, forM_, join)
-import Control.Monad.Tools(doWhile_, doWhile)
-import Control.Arrow((***))
-import Control.Concurrent(
-	ThreadId, forkIO, killThread, threadDelay,
-	Chan, newChan, readChan, writeChan)
+-- import Control.Monad(when, unless, forever, replicateM, forM_, join)
+import Control.Concurrent(ThreadId, forkIO)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
-import Data.Maybe(fromMaybe)
-import Data.List(delete)
-import Data.Convertible(convert)
-import Data.Function.Tools(const2, const3)
 
 --------------------------------------------------------------------------------
 
@@ -102,7 +92,9 @@ data Field = Field{
 	fLayers :: IORef Layers
  }
 
+addLayer :: Field -> IO Layer
 addLayer = makeLayer . fLayers
+addCharacter :: Field -> IO Character
 addCharacter = makeCharacter . fLayers
 
 --------------------------------------------------------------------------------
@@ -121,9 +113,8 @@ openField = do
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size 640 640
-	createWindow "field"
-	displayCallback $= (do
-		sequence_ =<< readIORef actions) -- testAction
+	_ <- createWindow "field"
+	displayCallback $= (sequence_ =<< readIORef actions)
 	G.addTimerCallback 10 (timerAction $ do
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
@@ -153,18 +144,16 @@ printString x y str =
 		G.clearColor $= G.Color4 0 0 0 0
 		G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
 		w <- G.stringWidth G.Roman "Stroke font"
-		G.translate (G.Vector3 (x * (fromIntegral w))
+		G.translate (G.Vector3 (x * fromIntegral w)
 			y 0 :: G.Vector3 GLfloat)
 		G.renderString G.Roman str
 
+timerAction :: IO a -> IO ()
 timerAction act = do
-	act
+	_ <- act
 	G.addTimerCallback 10 $ timerAction act
 
-data InputType = XInput | End | Timer
-
-waitInput :: Field -> IO (Chan ())
-waitInput f = newChan
+-- data InputType = XInput | End | Timer
 
 closeField :: Field -> IO ()
 closeField _ = return ()
@@ -185,67 +174,43 @@ fieldSize = const $ return (0, 0)
 --------------------------------------------------------------------------------
 
 forkField :: Field -> IO () -> IO ThreadId
-forkField f act = do
-	tid <- forkIO act
-	return tid
+forkField _f = forkIO
 
 flushField :: Field -> Bool -> IO a -> IO a
-flushField f real act = act
+flushField _f _real act = act
 
 fieldColor :: Field -> Layer -> Color -> IO ()
-fieldColor f l clr = return ()
+fieldColor _f _l _clr = return ()
 
 --------------------------------------------------------------------------------
 
-drawLayer f l drw = addDraw l (drw, drw)
-
 drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
-drawLine f l w c p q = do
+drawLine f _ w c p q = do
 	atomicModifyIORef_ (fActions f) (makeLineAction p q c w :)
 --	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
 	flush
-{- do
-	preservingMatrix $ do
-		renderPrimitive Quads $ mapM_ vertex [
-			Vertex3 0.10 0.10 0.0,
-			Vertex3 (-0.10) 0.10 0.0,
-			Vertex3 (-0.10) (-0.10) 0.0,
-			Vertex3 0.10 (-0.10) 0.0 :: Vertex3 GLfloat
-		 ]
-	swapBuffers -}
-
-testAction = do
-	G.loadIdentity
-	preservingMatrix $ do
-		renderPrimitive Lines $ mapM_ vertex [
-			Vertex3 0.10 0.10 0.0,
-			Vertex3 (-0.10) 0.10 0.0,
-			Vertex3 (-0.10) (-0.10) 0.0,
-			Vertex3 0.10 (-0.10) 0.0 :: Vertex3 GLfloat
-		 ]
---	swapBuffers
 
 makeLineAction :: Position -> Position -> Color -> Double -> IO ()
-makeLineAction p q c w = do
-	preservingMatrix $ do
-		G.lineWidth $= fromRational (toRational w)
-		G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
-		renderPrimitive Lines $ mapM_ vertex [
-			positionToVertex3 p,
-			positionToVertex3 q ]
---	swapBuffers
+makeLineAction p q c w = preservingMatrix $ do
+	G.lineWidth $= fromRational (toRational w)
+	G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+	renderPrimitive Lines $ mapM_ vertex [
+		positionToVertex3 p,
+		positionToVertex3 q ]
 
 colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
+colorToColor4 _ = error "colorToColor4: not implemented"
 
 makeCharacterAction :: [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction ps c lc lw =
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
-		renderPrimitive Triangles $ mapM_ (vertex . positionToVertex3) $
-			map posToPosition $ triangleToPositions $
+		renderPrimitive Triangles $
+			mapM_ (vertex . positionToVertex3 . posToPosition) $
+			triangleToPositions $
 			toTriangles $ map positionToPos ps
 --		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3) ps
 		G.lineWidth $= fromRational (toRational lw)
@@ -259,6 +224,7 @@ triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
 
 positionToPos :: Position -> Pos
 positionToPos (Center x y) = (x, y)
+positionToPos _ = error "positionToPos: not implemented"
 
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
@@ -267,32 +233,33 @@ positionToVertex3 :: Position -> Vertex2 GLfloat
 positionToVertex3 (Center x y) =
 	Vertex2 (fromRational $ toRational x / 300)
 		(fromRational $ toRational y / 300 + 0.2)
+positionToVertex3 _ = error "positionToVertex3: not implemented"
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 	String -> IO ()
-writeString f l fname size clr pos str = return ()
+writeString _f _ _fname _size _clr _pos _str = return ()
 
 drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
-drawImage f l fp pos w h = return ()
+drawImage _f _ _fp _pos _w _h = return ()
 
 fillRectangle :: Field -> Layer -> Position -> Double -> Double -> Color -> IO ()
-fillRectangle f l p w h clr = return ()
+fillRectangle _f _ _p _w _h _clr = return ()
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
-fillPolygon f l ps clr lc lw = do
+fillPolygon f _ ps clr lc lw =
 	atomicModifyIORef_ (fActions f) (makeCharacterAction ps clr lc lw :)
 
 --------------------------------------------------------------------------------
 
 drawCharacter :: Field -> Character -> Color -> Color -> [Position] -> Double -> IO ()
-drawCharacter f ch fc c ps lw = return ()
+drawCharacter f _ fclr clr sh lw = writeIORef (fAction f) $
+	makeCharacterAction sh fclr clr lw
 
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
-drawCharacterAndLine f ch fclr clr sh lw p q =
-	writeIORef (fAction f) $ do
-		makeLineAction p q clr lw
-		makeCharacterAction sh fclr clr lw
+drawCharacterAndLine f _ fclr clr sh lw p q = writeIORef (fAction f) $ do
+	makeLineAction p q clr lw
+	makeCharacterAction sh fclr clr lw
 
 clearCharacter :: Character -> IO ()
 clearCharacter ch = character ch $ return ()
@@ -319,7 +286,7 @@ onkeypress :: Field -> (Char -> IO Bool) -> IO ()
 onkeypress _ _ = return ()
 
 ontimer :: Field -> Int -> IO Bool -> IO ()
-ontimer f t fun = return ()
+ontimer _ _ _ = return ()
 
 keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 keyboardProc f (G.Char '\r') G.Down _ _ = do
@@ -327,7 +294,7 @@ keyboardProc f (G.Char '\r') G.Down _ _ = do
 	atomicModifyIORef_ (fString2 f) (str :)
 	writeIORef (fString f) ""
 	continue <- ($ str) =<< readIORef (fInputtext f)
-	unless continue $ G.leaveMainLoop
+	unless continue G.leaveMainLoop
 keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
 keyboardProc f (G.Char c) state _ _
 	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])

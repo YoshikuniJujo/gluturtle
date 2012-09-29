@@ -2,18 +2,8 @@ module Graphics.UI.GLUT.Turtle.Triangles(toTriangles) where
 
 import Graphics.UI.GLUT.Turtle.TriangleTools
 
-ps = [pa, pb, pc, pd]
-ps' = [(1, 3), (2.1, 2), (3, 3.1), (5, 2), (4, 1), (2, 1.5), (1, 1.1)]
-
-main = draw ps' $ toTriangles ps'
-
 toTriangles :: [Pos] -> [(Pos, Pos, Pos)]
-toTriangles ps = toTrianglesTop ps'
---	| isRight tri = toTrianglesTop ps'
---	| otherwise = toTrianglesTop $ reverse ps'
-	where
-	ps' = deleteOnline ps
-	(tri, rest) = distant3 ps
+toTriangles = toTrianglesTop . deleteOnline
 
 toTrianglesTop :: [Pos] -> [(Pos, Pos, Pos)]
 toTrianglesTop [a, b, c] = [(a, b, c)]

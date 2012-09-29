@@ -1,8 +1,6 @@
 module Graphics.UI.GLUT.Turtle.TriangleTools (
 	Pos,
 	far,
---	maximumIndex,
---	distance2,
 	index3,
 	deleteIndex,
 
@@ -22,6 +20,7 @@ import System.Environment
 far :: [Pos] -> Int
 far = maximumIndex . map distance2
 
+deleteOnline :: [Pos] -> [Pos]
 deleteOnline xs = init $ tail $ dol $ last xs : xs ++ [head xs]
 
 dol :: [Pos] -> [Pos]
@@ -29,6 +28,7 @@ dol [a, b] = [a, b]
 dol (a : ps@(b : ps'@(c : _)))
 	| online (a, b, c) = a : dol ps'
 	| otherwise = a : dol ps
+dol _ = error "dol: not implemented"
 
 maximumIndex :: Ord a => [a] -> Int
 maximumIndex = fst . maximumIndexGen
@@ -48,12 +48,14 @@ maximumIndexGen (x : xs)
 	| otherwise = (i + 1, x')
 	where
 	(i, x') = maximumIndexGen xs
+maximumIndexGen _ = error "maximumIndexGen: not implemented"
 
+draw :: [Pos] -> [(Pos, Pos, Pos)] -> IO ()
 draw pl trs = do
 	prgName <- getProgName
 	rawArgs <- getArgs
-	args <- initialize prgName rawArgs
-	createWindow "GLTest"
+	_args <- initialize prgName rawArgs
+	_ <- createWindow "GLTest"
 	displayCallback $= do
 		color $ (Color4 1 1 1 0 :: Color4 GLfloat)
 		drawTriangles trs -- [((50, 50), (-50, -50), (0, 50))]
@@ -63,25 +65,7 @@ draw pl trs = do
 		flush
 	mainLoop
 
-main = do
-	prgName <- getProgName
-	rawArgs <- getArgs
-	args <- initialize prgName rawArgs
-	createWindow "GLTest"
-	displayCallback $= displayScene
-	mainLoop
-
-displayScene = do
---	drawTriangles [(50, 50), (-50, -50), (0, 50)]
-	drawPolyline [(50, 50), (-50, -50), (0, 50), (-50, 80)]
-	swapBuffers
-	flush
-
-drawObject = preservingMatrix $
-	renderPrimitive Lines $ mapM_ vertex [
-		Vertex2 (-0.5) (-0.5),
-		Vertex2 0.5 0.5 :: Vertex2 GLfloat ]
-
+drawTriangles :: [(Pos, Pos, Pos)] -> IO ()
 drawTriangles ps = preservingMatrix $
 	renderPrimitive Triangles $ mapM_ vertex $ trianglesToVertex2 ps
 
@@ -94,6 +78,7 @@ toVertex2 :: (Double, Double) -> Vertex2 GLfloat
 toVertex2 (x, y) = Vertex2
 	(fromRational $ toRational x / 20) (fromRational $ toRational y / 20)
 
+drawPolyline :: [Pos] -> IO ()
 drawPolyline ps = preservingMatrix $
 	renderPrimitive LineLoop $ mapM_ (vertex . toVertex2) ps
 
@@ -108,30 +93,10 @@ isRight ((xa, ya), (xb, yb), (xc, yc))
 	(xd, yd) = (xa - xb, ya - yb)
 	(xe, ye) = (xc - xb, yc - yb)
 
+distance2 :: Floating a => (a, a) -> a
 distance2 (x, y) = x ** 2 + y ** 2
 
-maximum3 :: Ord a => [a] -> (a, a, a)
-maximum3 xs = maximum3Gen $ last xs : xs ++ [head xs]
-
-maximum3Gen :: Ord a => [a] -> (a, a, a)
-maximum3Gen [x, y, z] = (x, y, z)
-maximum3Gen (x : xs@(y : z : _))
-	| y > y' = (x, y, z)
-	| otherwise = p
-	where
-	p@(x', y', z') = maximum3Gen xs
-
-maximumby3 :: Ord b => (a -> b) -> [a] -> (a, a, a)
-maximumby3 b xs = maximumby3Gen b $ last xs : xs ++ [head xs]
-
-maximumby3Gen :: Ord b => (a -> b) -> [a] -> (a, a, a)
-maximumby3Gen _ [x, y, z] = (x, y, z)
-maximumby3Gen b (x : xs@(y : z : _))
-	| b y > b y' = (x, y, z)
-	| otherwise = p
-	where
-	p@(_, y', _) = maximumby3Gen b xs
-
+maximumby32 :: Ord b => (a -> b) -> [a] -> ((a, a, a), [a])
 maximumby32 b xs = maximumby3Gen2 b $ last xs : xs ++ [head xs]
 
 maximumby3Gen2 :: Ord b => (a -> b) -> [a] -> ((a, a, a), [a])
@@ -141,6 +106,7 @@ maximumby3Gen2 b (x : ys@(y : (zs@(z : _))))
 	| otherwise = (t, x : ps)
 	where
 	(t@(_, y', _), ps) = maximumby3Gen2 b ys
+maximumby3Gen2 _ _ = error "maximumby3Gen2: not implemented"
 
 distant3 :: [Pos] -> ((Pos, Pos, Pos), [Pos])
 distant3 ps = let (t, ps') = maximumby32 distance2 ps in (t, init $ tail ps')
@@ -156,14 +122,6 @@ online ((xa, ya), (xb, yb), (xc, yc)) = 0 == xd * ye - xe * yd
 	where
 	(xd, yd) = (xa - xb, ya - yb)
 	(xe, ye) = (xc - xb, yc - yb)
-
-deleteOnlineGen :: (Pos, Pos, Pos) -> (Pos, Pos)
-deleteOnlineGen (p1@(x1, _), p2@(x2, _), p3@(x3, _))
-	| not $ online (p1, p2, p3) = error "not online"
-	| x1 > x3 = deleteOnlineGen (p3, p2, p1)
-	| x2 < x1 = (p2, p3)
-	| x1 <=x2 && x2 <= x3 = (p1, p3)
-	| x3 < x2 = (p1, p2)
 
 pa, pb, pc, pd, pe :: Pos
 pa = (0, 4)

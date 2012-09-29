@@ -1,31 +1,30 @@
 module Main where
 
 import Graphics.UI.GLUT.Turtle
-import Graphics.UI.GLUT.Turtle.Field
 import Graphics.UI.GLUT(initialize, addTimerCallback, mainLoop)
 import System.Random
 import System.Environment
 import Control.Monad
-import Control.Concurrent
 import Data.Word
 
 main :: IO ()
 main = do
 	prgName <- getProgName
 	rawArgs <- getArgs
-	args <- initialize prgName rawArgs
+	_args <- initialize prgName rawArgs
 	f <- openField
 	t <- newTurtle f
 --	pencolor t "white"
 	pensize t 3
-	pencolor t (255, 255, 255)
+	pencolor t ((255, 255, 255) :: (Int, Int, Int))
 	preprocess t
 	(x0, y0) <- position t
 	addTimerCallback 100 $ timerProc $ draw t x0 y0
 	mainLoop
 
+timerProc :: IO a -> IO ()
 timerProc act = do
-	act
+	_ <- act
 	addTimerCallback 20 $ timerProc act
 
 randomWord8 :: IO Word8
@@ -52,6 +51,7 @@ preprocess t = do
 	pendown t
 	position t >>= print
 
+draw :: Turtle -> Double -> Double -> IO ()
 draw t x0 y0 = do
 	d <- randomRIO (- 180, 180)
 	r <- randomWord8
@@ -60,5 +60,5 @@ draw t x0 y0 = do
 	pencolor t (r, g, b)
 	left t d
 	forward t 15
-	d <- distance t x0 y0
-	when (d > 100) $ undo t
+	dist <- distance t x0 y0
+	when (dist > 100) $ undo t

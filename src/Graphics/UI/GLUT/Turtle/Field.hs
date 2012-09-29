@@ -52,6 +52,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 import System.Exit
 import Control.Applicative
 
+import Graphics.UI.GLUT.Turtle.Triangles
+
 import Graphics.UI.GLUT(
 	createWindow, Vertex2(..), renderPrimitive, vertex, PrimitiveMode(..),
 	preservingMatrix, GLfloat, swapBuffers, ($=), displayCallback,
@@ -245,11 +247,26 @@ colorToColor4 (RGB r g b) = G.Color4
 makeCharacterAction :: [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction ps c lc lw =
 	preservingMatrix $ do
+		print ps
 		G.color $ colorToColor4 c
-		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3) ps
+		renderPrimitive Triangles $ mapM_ (vertex . positionToVertex3) $
+			map posToPosition $ triangleToPositions $
+			toTriangles $ map positionToPos ps
+--		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3) ps
 		G.lineWidth $= fromRational (toRational lw)
 		G.color $ colorToColor4 lc
 		renderPrimitive LineLoop $ mapM_ (vertex . positionToVertex3) ps
+
+type Pos = (Double, Double)
+triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
+triangleToPositions [] = []
+triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
+
+positionToPos :: Position -> Pos
+positionToPos (Center x y) = (x, y)
+
+posToPosition :: Pos -> Position
+posToPosition (x, y) = Center x y
 
 positionToVertex3 :: Position -> Vertex2 GLfloat
 positionToVertex3 (Center x y) =

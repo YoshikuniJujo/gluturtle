@@ -110,8 +110,8 @@ openField = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	action <- newIORef $ return ()
 	actions <- newIORef []
-	str <- newIORef "coi rodo"
-	str2 <- newIORef "hello"
+	str <- newIORef ""
+	str2 <- newIORef "coi rodo"
 	inputtext <- newIORef $ const $ return True
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
@@ -242,10 +242,14 @@ colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 
-makeCharacterAction :: [Position] -> IO ()
-makeCharacterAction ps =
+makeCharacterAction :: [Position] -> Color -> Color -> Double -> IO ()
+makeCharacterAction ps c lc lw =
 	preservingMatrix $ do
+		G.color $ colorToColor4 c
 		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3) ps
+		G.lineWidth $= fromRational (toRational lw)
+		G.color $ colorToColor4 lc
+		renderPrimitive LineLoop $ mapM_ (vertex . positionToVertex3) ps
 
 positionToVertex3 :: Position -> Vertex2 GLfloat
 positionToVertex3 (Center x y) =
@@ -264,7 +268,7 @@ fillRectangle f l p w h clr = return ()
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f l ps clr lc lw = do
-	atomicModifyIORef_ (fActions f) (makeCharacterAction ps :)
+	atomicModifyIORef_ (fActions f) (makeCharacterAction ps clr lc lw :)
 
 --------------------------------------------------------------------------------
 
@@ -276,7 +280,7 @@ drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 drawCharacterAndLine f ch fclr clr sh lw p q =
 	writeIORef (fAction f) $ do
 		makeLineAction p q clr lw
-		makeCharacterAction sh
+		makeCharacterAction sh fclr clr lw
 
 clearCharacter :: Character -> IO ()
 clearCharacter ch = character ch $ return ()
@@ -309,7 +313,8 @@ keyboardProc f (G.Char '\r') G.Down _ _ = do
 	($ str) =<< readIORef (fInputtext f)
 	writeIORef (fString2 f) str
 	writeIORef (fString f) ""
+keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
 keyboardProc f (G.Char c) state _ _
-	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])
+	| state == G.Down = print c >> atomicModifyIORef_ (fString f) (++ [c])
 	| otherwise = return ()
 keyboardProc _ _ _ _ _ = return ()

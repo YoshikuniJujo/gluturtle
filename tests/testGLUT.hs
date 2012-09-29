@@ -12,6 +12,7 @@ main = do
 	t <- newTurtle f
 	oninputtext f (processInput t)
 --	speed t "slowest"
+	fillcolor t (255, 255, 255)
 	pencolor t (255, 255, 255)
 --	threadDelay 1000000
 --	left t 45
@@ -27,4 +28,7 @@ processInput t "stamp" = stamp t >> return True
 processInput t "bold" = pensize t 3 >> return True
 processInput t "big" = shapesize t 3 3 >> return True
 processInput t "blue" = pencolor t (0, 0, 255) >> return True
+processInput t "fblue" = fillcolor t (0, 0, 255) >> return True
+processInput t "yellow" = pencolor t (255, 255, 0) >> return True
+processInput t "normal" = pensize t 1 >> return True
 processInput t _ = return True

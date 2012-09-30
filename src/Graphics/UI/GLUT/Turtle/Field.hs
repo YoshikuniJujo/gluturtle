@@ -242,14 +242,17 @@ writeString f _ _fname size clr (Center x_ y_) str =
 	where
 	action = do
 		preservingMatrix $ do
-			let	x = 6.666 * fromRational (toRational x_)
-				y = 6.666 * fromRational (toRational y_)
+			let	size' = size / 15
+				x = 6.666 * fromRational (toRational $ x_ / size')
+				y = 6.666 * fromRational (toRational $ y_ / size')
+				s = 0.0005 * fromRational (toRational size')
 			G.color $ colorToColor4 clr
-			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
+			G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
 			G.clearColor $= G.Color4 0 0 0 0
-			w <- G.stringWidth G.Roman "Stroke font"
+--			_w <- G.stringWidth G.Roman str
 			G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
 			G.renderString G.Roman str
+writeString _ _ _ _ _ _ _ = error "writeString: not implemented"
 
 drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
 drawImage _f _ _fp _pos _w _h = return ()

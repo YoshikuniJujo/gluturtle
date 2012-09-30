@@ -240,18 +240,16 @@ writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 writeString f _ _fname size clr (Center x_ y_) str =
 	atomicModifyIORef_ (fActions f) (action :)
 	where
-	action = do
-		preservingMatrix $ do
-			let	size' = size / 15
-				x = 6.666 * fromRational (toRational $ x_ / size')
-				y = 6.666 * fromRational (toRational $ y_ / size')
-				s = 0.0005 * fromRational (toRational size')
-			G.color $ colorToColor4 clr
-			G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
-			G.clearColor $= G.Color4 0 0 0 0
---			_w <- G.stringWidth G.Roman str
-			G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
-			G.renderString G.Roman str
+	action = preservingMatrix $ do
+		let	size' = size / 15
+			x = 6.666 * fromRational (toRational $ x_ / size')
+			y = 6.666 * fromRational (toRational $ y_ / size')
+			s = 0.0005 * fromRational (toRational size')
+		G.color $ colorToColor4 clr
+		G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
+		G.clearColor $= G.Color4 0 0 0 0
+		G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
+		G.renderString G.Roman str
 writeString _ _ _ _ _ _ _ = error "writeString: not implemented"
 
 drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()

@@ -295,7 +295,8 @@ keyboardProc f (G.Char '\r') G.Down _ _ = do
 	writeIORef (fString f) ""
 	continue <- ($ str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
-keyboardProc f (G.Char '\b') G.Down _ _ = atomicModifyIORef_ (fString f) init
+keyboardProc f (G.Char '\b') G.Down _ _ =
+	atomicModifyIORef_ (fString f) $ \s -> if null s then s else init s
 keyboardProc f (G.Char c) state _ _
 	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])
 	| otherwise = return ()

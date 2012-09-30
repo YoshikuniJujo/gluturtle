@@ -22,6 +22,7 @@ main = do
 processInput :: Field -> Turtle -> String -> IO Bool
 processInput _ t "forward" = forward t 100 >> return True
 processInput _ t "left" = left t 90 >> return True
+processInput _ t "right" = right t 90 >> return True
 processInput _ t "begin" = beginfill t >> return True
 processInput _ t "end" = endfill t >> return True
 processInput _ t "turtle" = shape t "turtle" >> return True

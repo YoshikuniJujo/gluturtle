@@ -35,4 +35,5 @@ processInput _ t "normal" = pensize t 1 >> return True
 processInput _ _ "exit" = return False
 processInput f t "position" = position t >>= outputString f . show >> return True
 processInput _ t "penup" = penup t >> return True
+processInput _ t "message" = write t "KochiGothic" 20 "Hello, world!" >> return True
 processInput _ _ _ = return True

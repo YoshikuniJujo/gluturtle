@@ -232,12 +232,24 @@ posToPosition (x, y) = Center x y
 positionToVertex3 :: Position -> Vertex2 GLfloat
 positionToVertex3 (Center x y) =
 	Vertex2 (fromRational $ toRational x / 300)
-		(fromRational $ toRational y / 300 + 0.2)
+		(fromRational $ toRational y / 300)
 positionToVertex3 _ = error "positionToVertex3: not implemented"
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 	String -> IO ()
-writeString _f _ _fname _size _clr _pos _str = return ()
+writeString f _ _fname size clr (Center x_ y_) str =
+	atomicModifyIORef_ (fActions f) (action :)
+	where
+	action = do
+		preservingMatrix $ do
+			let	x = 6.666 * fromRational (toRational x_)
+				y = 6.666 * fromRational (toRational y_)
+			G.color $ colorToColor4 clr
+			G.scale (0.0005 :: GLfloat)  0.0005 0.0005
+			G.clearColor $= G.Color4 0 0 0 0
+			w <- G.stringWidth G.Roman "Stroke font"
+			G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
+			G.renderString G.Roman str
 
 drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
 drawImage _f _ _fp _pos _w _h = return ()

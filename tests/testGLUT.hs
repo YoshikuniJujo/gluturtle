@@ -8,7 +8,7 @@ main = do
 	prgName <- getProgName
 	rawArgs <- getArgs
 	_args <- initialize prgName rawArgs
-	f <- openField
+	f <- openField "test" 640 480
 	t <- newTurtle f
 	oninputtext f (processInput f t)
 --	speed t "slowest"
@@ -36,5 +36,5 @@ processInput _ t "normal" = pensize t 1 >> return True
 processInput _ _ "exit" = return False
 processInput f t "position" = position t >>= outputString f . show >> return True
 processInput _ t "penup" = penup t >> return True
-processInput _ t "message" = write t "KochiGothic" 20 "Hello, world!" >> return True
+processInput _ t "message" = write t "KochiGothic" 100 "Hello, world!" >> return True
 processInput _ _ _ = return True

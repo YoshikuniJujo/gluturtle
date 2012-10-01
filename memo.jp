@@ -193,3 +193,7 @@ GLUT 版について。
 2012.09.30 Sun.
 
 YJSVG で Text に linewidth を入れるようにしたい。
+
+2012.10.01 Mon.
+
+openField に window の名前、高さ、幅を引数としてとるようにする。

@@ -89,6 +89,9 @@ data Field = Field{
 
 	fInputtext :: IORef (String -> IO Bool),
 
+	fWidth :: Int,
+	fHeight :: Int,
+
 	fLayers :: IORef Layers
  }
 
@@ -102,8 +105,8 @@ addCharacter = makeCharacter . fLayers
 undoField :: Field -> IO ()
 undoField f = atomicModifyIORef_ (fActions f) tail
 
-openField :: IO Field
-openField = do
+openField :: String -> Int -> Int -> IO Field
+openField name w h = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	action <- newIORef $ return ()
 	actions <- newIORef []
@@ -112,8 +115,8 @@ openField = do
 	inputtext <- newIORef $ const $ return True
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
-	initialWindowSize $= Size 640 640
-	_ <- createWindow "field"
+	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
+	_ <- createWindow name
 	displayCallback $= (sequence_ =<< readIORef actions)
 	G.addTimerCallback 10 (timerAction $ do
 		G.clearColor $= G.Color4 0 0 0 0
@@ -132,6 +135,8 @@ openField = do
 		fActions = actions,
 		fString = str,
 		fString2 = str2,
+		fWidth = w,
+		fHeight = h,
 		fInputtext = inputtext
 	 }
 	G.keyboardMouseCallback $= Just (keyboardProc f)
@@ -186,36 +191,36 @@ fieldColor _f _l _clr = return ()
 
 drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
 drawLine f _ w c p q = do
-	atomicModifyIORef_ (fActions f) (makeLineAction p q c w :)
+	atomicModifyIORef_ (fActions f) (makeLineAction f p q c w :)
 --	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
 	flush
 
-makeLineAction :: Position -> Position -> Color -> Double -> IO ()
-makeLineAction p q c w = preservingMatrix $ do
+makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
+makeLineAction f p q c w = preservingMatrix $ do
 	G.lineWidth $= fromRational (toRational w)
 	G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
 	renderPrimitive Lines $ mapM_ vertex [
-		positionToVertex3 p,
-		positionToVertex3 q ]
+		positionToVertex3 f p,
+		positionToVertex3 f q ]
 
 colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
 
-makeCharacterAction :: [Position] -> Color -> Color -> Double -> IO ()
-makeCharacterAction ps c lc lw =
+makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
+makeCharacterAction f ps c lc lw =
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
 		renderPrimitive Triangles $
-			mapM_ (vertex . positionToVertex3 . posToPosition) $
+			mapM_ (vertex . positionToVertex3 f . posToPosition) $
 			triangleToPositions $
 			toTriangles $ map positionToPos ps
---		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3) ps
+--		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3 f) ps
 		G.lineWidth $= fromRational (toRational lw)
 		G.color $ colorToColor4 lc
-		renderPrimitive LineLoop $ mapM_ (vertex . positionToVertex3) ps
+		renderPrimitive LineLoop $ mapM_ (vertex . positionToVertex3 f) ps
 
 type Pos = (Double, Double)
 triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
@@ -229,11 +234,11 @@ positionToPos _ = error "positionToPos: not implemented"
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
 
-positionToVertex3 :: Position -> Vertex2 GLfloat
-positionToVertex3 (Center x y) =
-	Vertex2 (fromRational $ toRational x / 300)
-		(fromRational $ toRational y / 300)
-positionToVertex3 _ = error "positionToVertex3: not implemented"
+positionToVertex3 :: Field -> Position -> Vertex2 GLfloat
+positionToVertex3 f (Center x y) =
+	Vertex2 (fromRational $ toRational x / fromIntegral (fWidth f))
+		(fromRational $ toRational y / fromIntegral (fHeight f))
+positionToVertex3 _ _ = error "positionToVertex3: not implemented"
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 	String -> IO ()
@@ -242,9 +247,13 @@ writeString f _ _fname size clr (Center x_ y_) str =
 	where
 	action = preservingMatrix $ do
 		let	size' = size / 15
-			x = 6.666 * fromRational (toRational $ x_ / size')
-			y = 6.666 * fromRational (toRational $ y_ / size')
-			s = 0.0005 * fromRational (toRational size')
+			ratio = 7 * fromIntegral (fHeight f) -- 2000
+			x_ratio = ratio / fromIntegral (fWidth f)
+			y_ratio = ratio / fromIntegral (fHeight f)
+			x = x_ratio * fromRational (toRational $ x_ / size')
+			y = y_ratio * fromRational (toRational $ y_ / size')
+--			s = 0.0005 * fromRational (toRational size')
+			s = 1 / ratio * fromRational (toRational size')
 		G.color $ colorToColor4 clr
 		G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
 		G.clearColor $= G.Color4 0 0 0 0
@@ -260,19 +269,19 @@ fillRectangle _f _ _p _w _h _clr = return ()
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f _ ps clr lc lw =
-	atomicModifyIORef_ (fActions f) (makeCharacterAction ps clr lc lw :)
+	atomicModifyIORef_ (fActions f) (makeCharacterAction f ps clr lc lw :)
 
 --------------------------------------------------------------------------------
 
 drawCharacter :: Field -> Character -> Color -> Color -> [Position] -> Double -> IO ()
 drawCharacter f _ fclr clr sh lw = writeIORef (fAction f) $
-	makeCharacterAction sh fclr clr lw
+	makeCharacterAction f sh fclr clr lw
 
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f _ fclr clr sh lw p q = writeIORef (fAction f) $ do
-	makeLineAction p q clr lw
-	makeCharacterAction sh fclr clr lw
+	makeLineAction f p q clr lw
+	makeCharacterAction f sh fclr clr lw
 
 clearCharacter :: Character -> IO ()
 clearCharacter ch = character ch $ return ()

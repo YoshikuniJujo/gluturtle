@@ -12,7 +12,7 @@ main = do
 	prgName <- getProgName
 	rawArgs <- getArgs
 	_args <- initialize prgName rawArgs
-	f <- openField
+	f <- openField "random" 480 480
 	t <- newTurtle f
 --	pencolor t "white"
 	pensize t 3

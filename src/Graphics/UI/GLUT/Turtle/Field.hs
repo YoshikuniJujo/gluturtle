@@ -121,7 +121,7 @@ openField name w h = do
 	G.addTimerCallback 10 (timerAction $ do
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
-		sequence_ =<< readIORef actions
+		sequence_ . reverse =<< readIORef actions
 		join $ readIORef action
 		G.lineWidth $= 1.0
 		printString (-2.5) (-1800) =<< readIORef str

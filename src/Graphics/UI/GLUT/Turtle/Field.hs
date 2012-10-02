@@ -84,7 +84,7 @@ data Field = Field{
 	fAction :: IORef (IO ()),
 	fActions :: IORef [IO ()],
 
-	fString :: IORef String,
+	fString :: IORef [String],
 	fString2 :: IORef [String],
 
 	fInputtext :: IORef (String -> IO Bool),
@@ -110,7 +110,7 @@ openField name w h = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	action <- newIORef $ return ()
 	actions <- newIORef []
-	str <- newIORef ""
+	str <- newIORef [""]
 	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
 
@@ -124,8 +124,13 @@ openField name w h = do
 		sequence_ . reverse =<< readIORef actions
 		join $ readIORef action
 		G.lineWidth $= 1.0
-		printString (-2.5) (-1800) =<< readIORef str
+		ss1 <- readIORef str
+		ss2 <- readIORef str2
+		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 0] (reverse ss1 ++ ss2)
+{-
+		printString (-2.5) (-1800) . concat =<< readIORef str
 		zipWithM_ (printString (-2.5)) [-1600, -1400 .. 0] =<< readIORef str2
+-}
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
@@ -312,14 +317,24 @@ ontimer _ _ _ = return ()
 
 keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 keyboardProc f (G.Char '\r') G.Down _ _ = do
-	str <- readIORef $ fString f
-	atomicModifyIORef_ (fString2 f) (str :)
-	writeIORef (fString f) ""
-	continue <- ($ str) =<< readIORef (fInputtext f)
+	str <- readIORef (fString f)
+	atomicModifyIORef_ (fString2 f) (reverse str ++)
+	writeIORef (fString f) [""]
+	continue <- ($ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
 keyboardProc f (G.Char '\b') G.Down _ _ =
-	atomicModifyIORef_ (fString f) $ \s -> if null s then s else init s
+	atomicModifyIORef_ (fString f) $ \s -> case s of
+		[""] -> [""]
+		s -> case last s of
+			"" -> init (init s) ++ [init $ last $ init s]
+			_ -> init s ++ [init $ last s]
 keyboardProc f (G.Char c) state _ _
-	| state == G.Down = atomicModifyIORef_ (fString f) (++ [c])
+	| state == G.Down = atomicModifyIORef_ (fString f) (`addToTail` c)
 	| otherwise = return ()
 keyboardProc _ _ _ _ _ = return ()
+
+addToTail :: [String] -> Char -> [String]
+addToTail strs c
+	| null strs = error "bad"
+	| length (last strs) < 50 = init strs ++ [last strs ++ [c]]
+	| otherwise = strs ++ [[c]]

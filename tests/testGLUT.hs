@@ -37,4 +37,6 @@ processInput _ _ "exit" = return False
 processInput f t "position" = position t >>= outputString f . show >> return True
 processInput _ t "penup" = penup t >> return True
 processInput _ t "message" = write t "KochiGothic" 100 "Hello, world!" >> return True
+processInput _ t "0very1very2very3very4very5very6very7very8very9very0very-long-line"
+	= putStrLn "very long line" >> return True
 processInput _ _ _ = return True

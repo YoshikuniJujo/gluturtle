@@ -59,7 +59,7 @@ import Graphics.UI.GLUT(
 	createWindow, Vertex2(..), renderPrimitive, vertex, PrimitiveMode(..),
 	preservingMatrix, GLfloat, swapBuffers, ($=), displayCallback,
 	initialDisplayMode, initialWindowSize, Size(..),
-	DisplayMode(..), flush
+	DisplayMode(..), flush, currentWindow, Window
  )
 import qualified Graphics.UI.GLUT as G
 
@@ -92,6 +92,9 @@ data Field = Field{
 	fWidth :: Int,
 	fHeight :: Int,
 
+	fFieldWindow :: Window,
+	fConsoleWindow :: Window,
+
 	fLayers :: IORef Layers
  }
 
@@ -116,21 +119,24 @@ openField name w h = do
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
-	_ <- createWindow name
+	wt <- createWindow name
+	wc <- createWindow "console"
+	currentWindow $= Just wc
 	displayCallback $= (sequence_ =<< readIORef actions)
 	G.addTimerCallback 10 (timerAction $ do
+		currentWindow $= Just wt
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
 		sequence_ . reverse =<< readIORef actions
 		join $ readIORef action
+		swapBuffers
+		currentWindow $= Just wc
+		G.clearColor $= G.Color4 0 0 0 0
+		G.clear [G.ColorBuffer]
 		G.lineWidth $= 1.0
 		ss1 <- readIORef str
 		ss2 <- readIORef str2
 		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 0] (reverse ss1 ++ ss2)
-{-
-		printString (-2.5) (-1800) . concat =<< readIORef str
-		zipWithM_ (printString (-2.5)) [-1600, -1400 .. 0] =<< readIORef str2
--}
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
@@ -142,7 +148,9 @@ openField name w h = do
 		fString2 = str2,
 		fWidth = w,
 		fHeight = h,
-		fInputtext = inputtext
+		fInputtext = inputtext,
+		fFieldWindow = wt,
+		fConsoleWindow = wc
 	 }
 	G.keyboardMouseCallback $= Just (keyboardProc f)
 	return f

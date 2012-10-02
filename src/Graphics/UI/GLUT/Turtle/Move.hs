@@ -68,7 +68,7 @@ moveTurtle f c l t0 t1 = do
 		forM_ (positions w h t0 t1) $ \p -> fl $
 			drawTtl (direction t1) p >> threadDelay (interval t0)
 		fl $ drawTtl (direction t1) $ position t1
-	when (visible t0 && not (visible t1)) $ fl $ clearCharacter c
+	when (visible t0 && not (visible t1)) $ fl $ clearCharacter f
 	when (clear t1) $ fl $ clearLayer l
 	unless (undo t1) $ fl $ maybe (return ()) (drawSVG f l) (draw t1)
 	where

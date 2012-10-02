@@ -154,7 +154,7 @@ newTurtle f = do
 		shapes = shapesRef,
 		inputs = fmap (flip take hist . pred) $ readIORef index,
 		killTurtle = flushField f True $
-			clearLayer l >> clearCharacter c >> killThread thr}
+			clearLayer l >> clearCharacter f >> killThread thr}
 	shape t "classic" >> input t (Undonum 0) >> return t
 
 runInputs :: Turtle -> [TurtleInput] -> IO ()

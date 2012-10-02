@@ -288,8 +288,8 @@ drawCharacterAndLine f _ fclr clr sh lw p q = writeIORef (fAction f) $ do
 	makeLineAction f p q clr lw
 	makeCharacterAction f sh fclr clr lw
 
-clearCharacter :: Character -> IO ()
-clearCharacter ch = character ch $ return ()
+clearCharacter :: Field -> IO ()
+clearCharacter f = writeIORef (fAction f) $ return ()
 
 --------------------------------------------------------------------------------
 

@@ -179,7 +179,7 @@ coordinates :: Field -> IO Coordinates
 coordinates = return . fCoordinates
 
 fieldSize :: Field -> IO (Double, Double)
-fieldSize = const $ return (0, 0)
+fieldSize f = return (fromIntegral $ fWidth f, fromIntegral $ fHeight f)
 
 --------------------------------------------------------------------------------
 

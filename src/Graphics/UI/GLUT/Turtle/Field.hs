@@ -362,12 +362,14 @@ keyboardProc f (G.Char '\r') G.Down _ _ = do
 	writeIORef (fString f) [p]
 	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
-keyboardProc f (G.Char '\b') G.Down _ _ =
+keyboardProc f (G.Char '\b') G.Down _ _ = do
+	p <- readIORef $ fPrompt f
 	atomicModifyIORef_ (fString f) $ \s -> case s of
 		[""] -> [""]
-		s -> case last s of
-			"" -> init (init s) ++ [init $ last $ init s]
-			_ -> init s ++ [init $ last s]
+		s	| length (last s) <= length p -> s
+			| otherwise -> case last s of
+				"" -> init (init s) ++ [init $ last $ init s]
+				_ -> init s ++ [init $ last s]
 keyboardProc f (G.Char c) state _ _
 	| state == G.Down = atomicModifyIORef_ (fString f) (`addToTail` c)
 	| otherwise = return ()

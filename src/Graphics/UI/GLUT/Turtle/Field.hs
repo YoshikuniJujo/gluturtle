@@ -75,6 +75,7 @@ import Text.XML.YJSVG(Position(..), Color(..))
 import Control.Concurrent(ThreadId, forkIO)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
+import Data.Maybe
 
 --------------------------------------------------------------------------------
 
@@ -87,8 +88,9 @@ data Coordinates = CoordTopLeft | CoordCenter
 data Field = Field{
 	fCoordinates :: Coordinates,
 
+	fBgcolor :: IORef [Color],
 	fAction :: IORef (IO ()),
-	fActions :: IORef [IO ()],
+	fActions :: IORef [Maybe (IO ())],
 
 	fString :: IORef [String],
 	fString2 :: IORef [String],
@@ -114,13 +116,20 @@ addCharacter = makeCharacter . fLayers
 --------------------------------------------------------------------------------
 
 undoField :: Field -> IO ()
-undoField f = atomicModifyIORef_ (fActions f) tail
+undoField f = do
+	a : _ <- readIORef $ fActions f
+	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
+	atomicModifyIORef_ (fActions f) myTail
+
+myTail [] = error "myTail failed"
+myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
+	bgc <- newIORef $ [RGB 255 255 255]
 	action <- newIORef $ return ()
-	actions <- newIORef [makeFieldColor $ RGB 255 255 255]
+	actions <- newIORef [] -- [makeFieldColor $ RGB 255 255 255]
 	str <- newIORef [""]
 	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
@@ -132,14 +141,15 @@ openField name w h = do
 	wt <- createWindow name
 	wc <- createWindow "console"
 	currentWindow $= Just wt
-	displayCallback $= (sequence_ =<< readIORef actions)
+	displayCallback $= (sequence_ . catMaybes =<< readIORef actions)
 	currentWindow $= Just wc
-	displayCallback $= (sequence_ =<< readIORef actions)
+	displayCallback $= (sequence_ . catMaybes =<< readIORef actions)
 	G.addTimerCallback 10 (timerAction $ do
 		currentWindow $= Just wt
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
-		sequence_ . reverse =<< readIORef actions
+		makeFieldColor . head =<< readIORef bgc
+		sequence_ . reverse . catMaybes =<< readIORef actions
 		join $ readIORef action
 		swapBuffers
 		currentWindow $= Just wc
@@ -163,7 +173,9 @@ openField name w h = do
 		fInputtext = inputtext,
 		fFieldWindow = wt,
 		fConsoleWindow = wc,
-		fPrompt = prmpt
+		fPrompt = prmpt,
+
+		fBgcolor = bgc
 	 }
 	G.keyboardMouseCallback $= Just (keyboardProc f)
 	return f
@@ -211,8 +223,14 @@ flushField :: Field -> Bool -> IO a -> IO a
 flushField _f _real act = act
 
 fieldColor :: Field -> Layer -> Color -> IO ()
-fieldColor f _l clr =
-	atomicModifyIORef_ (fActions f) ((++ [makeFieldColor clr]) . init)
+fieldColor f _l clr = do
+--	atomicModifyIORef_ (fActions f) ((++ [makeFieldColor clr]) . myInit)
+	atomicModifyIORef_ (fBgcolor f) (clr :)
+	atomicModifyIORef_ (fActions f) (Nothing :)
+
+myInit [] = error "myInit failed"
+myInit [x] = []
+myInit (x : xs) = x : myInit xs
 
 makeFieldColor clr = preservingMatrix $ do
 	G.color $ colorToColor4 clr
@@ -226,7 +244,7 @@ makeFieldColor clr = preservingMatrix $ do
 
 drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
 drawLine f _ w c p q = do
-	atomicModifyIORef_ (fActions f) (makeLineAction f p q c w :)
+	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 --	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
 	flush
@@ -285,7 +303,7 @@ positionToVertex3 _ _ = error "positionToVertex3: not implemented"
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
 	String -> IO ()
 writeString f _ _fname size clr (Center x_ y_) str =
-	atomicModifyIORef_ (fActions f) (action :)
+	atomicModifyIORef_ (fActions f) (Just action :)
 	where
 	action = preservingMatrix $ do
 		let	size' = size / 15
@@ -315,7 +333,7 @@ fillRectangle f _ p w h clr = do return ()
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f _ ps clr lc lw =
-	atomicModifyIORef_ (fActions f) (makeCharacterAction f ps clr lc lw :)
+	atomicModifyIORef_ (fActions f) (Just (makeCharacterAction f ps clr lc lw) :)
 
 --------------------------------------------------------------------------------
 

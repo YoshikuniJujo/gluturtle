@@ -30,11 +30,13 @@ module Graphics.UI.GLUT.Turtle.Move(
 	addLayer,
 	addCharacter,
 
-	outputString
+	outputString,
+
+	prompt
 ) where
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
-import Graphics.UI.GLUT.Turtle.Field(
+import Graphics.UI.GLUT.Turtle.Field(prompt,
 	Field, Layer, Character, Coordinates(..),
 	openField, closeField, waitField, coordinates, topleft, center,
 	fieldSize, forkField, flushField, clearLayer,

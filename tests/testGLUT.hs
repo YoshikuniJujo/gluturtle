@@ -9,6 +9,7 @@ main = do
 	rawArgs <- getArgs
 	_args <- initialize prgName rawArgs
 	f <- openField "test" 640 480
+	prompt f "> "
 	t <- newTurtle f
 	oninputtext f (processInput f t)
 --	speed t "slowest"

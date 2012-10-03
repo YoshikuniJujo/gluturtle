@@ -48,7 +48,9 @@ module Graphics.UI.GLUT.Turtle.Field(
 	ontimer,
 
 	addLayer,
-	addCharacter
+	addCharacter,
+
+	prompt
 ) where
 
 import Control.Monad
@@ -76,6 +78,10 @@ import Data.IORef.Tools(atomicModifyIORef_)
 
 --------------------------------------------------------------------------------
 
+prompt f p = do
+	writeIORef (fPrompt f) p
+	atomicModifyIORef_ (fString f) (\ls -> init ls ++ [p ++ last ls])
+
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
@@ -94,6 +100,8 @@ data Field = Field{
 
 	fFieldWindow :: Window,
 	fConsoleWindow :: Window,
+
+	fPrompt :: IORef String,
 
 	fLayers :: IORef Layers
  }
@@ -116,6 +124,8 @@ openField name w h = do
 	str <- newIORef [""]
 	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
+
+	prmpt <- newIORef ""
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
@@ -150,7 +160,8 @@ openField name w h = do
 		fHeight = h,
 		fInputtext = inputtext,
 		fFieldWindow = wt,
-		fConsoleWindow = wc
+		fConsoleWindow = wc,
+		fPrompt = prmpt
 	 }
 	G.keyboardMouseCallback $= Just (keyboardProc f)
 	return f
@@ -345,10 +356,11 @@ ontimer _ _ _ = return ()
 
 keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 keyboardProc f (G.Char '\r') G.Down _ _ = do
+	p <- readIORef $ fPrompt f
 	str <- readIORef (fString f)
 	atomicModifyIORef_ (fString2 f) (reverse str ++)
-	writeIORef (fString f) [""]
-	continue <- ($ concat str) =<< readIORef (fInputtext f)
+	writeIORef (fString f) [p]
+	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
 keyboardProc f (G.Char '\b') G.Down _ _ =
 	atomicModifyIORef_ (fString f) $ \s -> case s of

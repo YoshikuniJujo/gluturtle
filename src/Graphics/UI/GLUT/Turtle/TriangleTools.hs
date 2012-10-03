@@ -28,7 +28,7 @@ dol [a, b] = [a, b]
 dol (a : ps@(b : ps'@(c : _)))
 	| online (a, b, c) = a : dol ps'
 	| otherwise = a : dol ps
-dol _ = error "dol: not implemented"
+dol p = error $ "dol: not implemented " ++ show p
 
 maximumIndex :: Ord a => [a] -> Int
 maximumIndex = fst . maximumIndexGen

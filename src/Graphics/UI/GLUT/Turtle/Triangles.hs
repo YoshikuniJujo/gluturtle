@@ -3,7 +3,15 @@ module Graphics.UI.GLUT.Turtle.Triangles(toTriangles) where
 import Graphics.UI.GLUT.Turtle.TriangleTools
 
 toTriangles :: [Pos] -> [(Pos, Pos, Pos)]
-toTriangles = toTrianglesTop . deleteOnline
+toTriangles ps
+	| length ps < 3 = []
+	| otherwise = toTrianglesTop $ deleteOnline $ deletePoint ps
+
+deletePoint [] = []
+deletePoint [p] = [p]
+deletePoint pa@(p0 : ps)
+	| p0 == last ps = ps
+	| otherwise = pa
 
 toTrianglesTop :: [Pos] -> [(Pos, Pos, Pos)]
 toTrianglesTop [a, b, c] = [(a, b, c)]

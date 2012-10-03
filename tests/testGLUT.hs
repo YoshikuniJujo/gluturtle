@@ -43,4 +43,5 @@ processInput _ t "0very1very2very3very4very5very6very7very8very9very0very-long-l
 processInput _ t "hide" = hideturtle t >> return True
 processInput _ t "bred" = bgcolor t ((255, 0, 0) :: (Int, Int, Int)) >> return True
 processInput _ t "bgreen" = bgcolor t ((0, 255, 0) :: (Int, Int, Int)) >> return True
+processInput _ t "home" = goto t 0 0 >> return True
 processInput _ _ _ = return True

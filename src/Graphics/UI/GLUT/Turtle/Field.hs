@@ -278,8 +278,8 @@ posToPosition (x, y) = Center x y
 
 positionToVertex3 :: Field -> Position -> Vertex2 GLfloat
 positionToVertex3 f (Center x y) =
-	Vertex2 (fromRational $ toRational x / fromIntegral (fWidth f))
-		(fromRational $ toRational y / fromIntegral (fHeight f))
+	Vertex2 (fromRational $ 2 * toRational x / fromIntegral (fWidth f))
+		(fromRational $ 2 * toRational y / fromIntegral (fHeight f))
 positionToVertex3 _ _ = error "positionToVertex3: not implemented"
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
@@ -289,9 +289,9 @@ writeString f _ _fname size clr (Center x_ y_) str =
 	where
 	action = preservingMatrix $ do
 		let	size' = size / 15
-			ratio = 7 * fromIntegral (fHeight f) -- 2000
-			x_ratio = ratio / fromIntegral (fWidth f)
-			y_ratio = ratio / fromIntegral (fHeight f)
+			ratio = 3.5 * fromIntegral (fHeight f) -- 2000
+			x_ratio = 2 * ratio / fromIntegral (fWidth f)
+			y_ratio = 2 * ratio / fromIntegral (fHeight f)
 			x = x_ratio * fromRational (toRational $ x_ / size')
 			y = y_ratio * fromRational (toRational $ y_ / size')
 --			s = 0.0005 * fromRational (toRational size')

@@ -148,7 +148,7 @@ openField name w h = do
 		G.lineWidth $= 1.0
 		ss1 <- readIORef str
 		ss2 <- readIORef str2
-		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 0] (reverse ss1 ++ ss2)
+		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
 		swapBuffers)
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{

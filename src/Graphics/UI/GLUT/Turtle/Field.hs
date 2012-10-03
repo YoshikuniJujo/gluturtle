@@ -112,7 +112,7 @@ openField :: String -> Int -> Int -> IO Field
 openField name w h = do
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	action <- newIORef $ return ()
-	actions <- newIORef []
+	actions <- newIORef [makeFieldColor $ RGB 255 255 255]
 	str <- newIORef [""]
 	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
@@ -198,7 +198,16 @@ flushField :: Field -> Bool -> IO a -> IO a
 flushField _f _real act = act
 
 fieldColor :: Field -> Layer -> Color -> IO ()
-fieldColor _f _l _clr = return ()
+fieldColor f _l clr =
+	atomicModifyIORef_ (fActions f) ((++ [makeFieldColor clr]) . init)
+
+makeFieldColor clr = preservingMatrix $ do
+	G.color $ colorToColor4 clr
+	renderPrimitive Quads $ mapM_ vertex [
+		G.Vertex2 (-1) (-1),
+		G.Vertex2 (-1) 1,
+		G.Vertex2 1 1,
+		G.Vertex2 1 (-1) :: Vertex2 GLfloat ]
 
 --------------------------------------------------------------------------------
 
@@ -221,6 +230,13 @@ colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
+
+makeQuads :: Field -> [Position] -> Color -> IO ()
+makeQuads f ps c =
+	preservingMatrix $ do
+		G.color $ colorToColor4 c
+		renderPrimitive Quads $
+			mapM_ (vertex . positionToVertex3 f) ps
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction f ps c lc lw =
@@ -278,7 +294,11 @@ drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
 drawImage _f _ _fp _pos _w _h = return ()
 
 fillRectangle :: Field -> Layer -> Position -> Double -> Double -> Color -> IO ()
-fillRectangle _f _ _p _w _h _clr = return ()
+fillRectangle f _ p w h clr = do return ()
+{-
+	atomicModifyIORef_ (fActions f) (makeQuads f [
+		Center 0 0, Center 0 100, Center 100 100, Center 100 0] clr])
+-}
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f _ ps clr lc lw =

@@ -12,8 +12,8 @@ main = do
 	t <- newTurtle f
 	oninputtext f (processInput f t)
 --	speed t "slowest"
-	fillcolor t ((255, 255, 255) :: (Int, Int, Int))
-	pencolor t ((255, 255, 255) :: (Int, Int, Int))
+--	fillcolor t ((255, 255, 255) :: (Int, Int, Int))
+--	pencolor t ((255, 255, 255) :: (Int, Int, Int))
 --	threadDelay 1000000
 --	left t 45
 --	forward t 100
@@ -40,4 +40,6 @@ processInput _ t "message" = write t "KochiGothic" 100 "Hello, world!" >> return
 processInput _ t "0very1very2very3very4very5very6very7very8very9very0very-long-line"
 	= putStrLn "very long line" >> return True
 processInput _ t "hide" = hideturtle t >> return True
+processInput _ t "bred" = bgcolor t ((255, 0, 0) :: (Int, Int, Int)) >> return True
+processInput _ t "bgreen" = bgcolor t ((0, 255, 0) :: (Int, Int, Int)) >> return True
 processInput _ _ _ = return True

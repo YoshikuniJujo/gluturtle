@@ -131,6 +131,8 @@ openField name w h = do
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	wt <- createWindow name
 	wc <- createWindow "console"
+	currentWindow $= Just wt
+	displayCallback $= (sequence_ =<< readIORef actions)
 	currentWindow $= Just wc
 	displayCallback $= (sequence_ =<< readIORef actions)
 	G.addTimerCallback 10 (timerAction $ do

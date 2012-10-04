@@ -47,6 +47,7 @@ module Graphics.UI.GLUT.Turtle(
 	setheading,
 	circle,
 	home,
+	notundo,
 	undo,
 	sleep,
 	flush,
@@ -214,6 +215,9 @@ circle t r = do
 
 home :: Turtle -> IO ()
 home t = goto t 0 0 >> setheading t 0 >> input t (Undonum 3)
+
+notundo :: Turtle -> IO ()
+notundo t = input t $ Undonum 0
 
 undo :: Turtle -> IO ()
 undo t = info t undonum >>= flip replicateM_ (input t Undo)

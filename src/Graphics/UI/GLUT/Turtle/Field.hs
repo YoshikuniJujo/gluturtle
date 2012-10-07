@@ -1,6 +1,8 @@
 {-# LANGUAGE DoRec #-}
 
 module Graphics.UI.GLUT.Turtle.Field(
+	initialize,
+
 	-- * types and classes
 	Field,
 	Layer,
@@ -76,8 +78,15 @@ import Control.Concurrent(ThreadId, forkIO)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
+import System.Environment
 
 --------------------------------------------------------------------------------
+
+initialize :: IO [String]
+initialize = do
+	prgName <- getProgName
+	rawArgs <- getArgs
+	G.initialize prgName rawArgs
 
 prompt f p = do
 	writeIORef (fPrompt f) p

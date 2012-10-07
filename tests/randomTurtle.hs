@@ -1,17 +1,14 @@
 module Main where
 
 import Graphics.UI.GLUT.Turtle
-import Graphics.UI.GLUT(initialize, addTimerCallback, mainLoop)
+import Graphics.UI.GLUT(addTimerCallback, mainLoop)
 import System.Random
-import System.Environment
 import Control.Monad
 import Data.Word
 
 main :: IO ()
 main = do
-	prgName <- getProgName
-	rawArgs <- getArgs
-	_args <- initialize prgName rawArgs
+	_args <- initialize
 	f <- openField "random" 480 480
 	t <- newTurtle f
 --	pencolor t "white"

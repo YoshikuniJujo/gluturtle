@@ -96,7 +96,9 @@ module Graphics.UI.GLUT.Turtle(
 
 	outputString,
 
-	prompt
+	prompt,
+
+	initialize
 ) where
 
 import Graphics.UI.GLUT.Turtle.Data(shapeTable, speedTable)
@@ -104,7 +106,7 @@ import Graphics.UI.GLUT.Turtle.State(
 	TurtleState, direction, visible, undonum, drawed, polyPoints)
 import qualified Graphics.UI.GLUT.Turtle.State as S(position, degrees, pendown)
 import Graphics.UI.GLUT.Turtle.Input(TurtleInput(..), turtleSeries)
-import Graphics.UI.GLUT.Turtle.Move(prompt,
+import Graphics.UI.GLUT.Turtle.Move(prompt, initialize,
 	Field, Coordinates(..), openField, closeField, waitField,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
 	addLayer, clearLayer, addCharacter, clearCharacter, moveTurtle,

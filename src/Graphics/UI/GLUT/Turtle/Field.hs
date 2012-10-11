@@ -106,8 +106,8 @@ data Field = Field{
 
 	fInputtext :: IORef (String -> IO Bool),
 
-	fWidth :: Int,
-	fHeight :: Int,
+	fWidth :: IORef Int,
+	fHeight :: IORef Int,
 
 	fFieldWindow :: Window,
 	fConsoleWindow :: Window,
@@ -135,6 +135,8 @@ myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
+	fw <- newIORef w
+	fh <- newIORef h
 	layers <- newLayers 0 (return ()) (return ()) (return ())
 	bgc <- newIORef $ [RGB 255 255 255]
 	action <- newIORef $ return ()
@@ -177,8 +179,8 @@ openField name w h = do
 		fActions = actions,
 		fString = str,
 		fString2 = str2,
-		fWidth = w,
-		fHeight = h,
+		fWidth = fw,
+		fHeight = fh,
 		fInputtext = inputtext,
 		fFieldWindow = wt,
 		fConsoleWindow = wc,
@@ -221,7 +223,10 @@ coordinates :: Field -> IO Coordinates
 coordinates = return . fCoordinates
 
 fieldSize :: Field -> IO (Double, Double)
-fieldSize f = return (fromIntegral $ fWidth f, fromIntegral $ fHeight f)
+fieldSize f = do
+	w <- readIORef $ fWidth f
+	h <- readIORef $ fHeight f
+	return (fromIntegral w, fromIntegral h)
 
 --------------------------------------------------------------------------------
 
@@ -262,9 +267,9 @@ makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
 makeLineAction f p q c w = preservingMatrix $ do
 	G.lineWidth $= fromRational (toRational w)
 	G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
-	renderPrimitive Lines $ mapM_ vertex [
-		positionToVertex3 f p,
-		positionToVertex3 f q ]
+	pp <- positionToVertex3 f p
+	qq <- positionToVertex3 f q
+	renderPrimitive Lines $ mapM_ vertex [pp, qq]
 
 colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
@@ -272,24 +277,27 @@ colorToColor4 (RGB r g b) = G.Color4
 colorToColor4 _ = error "colorToColor4: not implemented"
 
 makeQuads :: Field -> [Position] -> Color -> IO ()
-makeQuads f ps c =
+makeQuads f ps c = do
+	vs <- mapM (positionToVertex3 f) ps
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
-		renderPrimitive Quads $
-			mapM_ (vertex . positionToVertex3 f) ps
+		renderPrimitive Quads $ mapM_ vertex vs
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
-makeCharacterAction f ps c lc lw =
+makeCharacterAction f ps c lc lw = do
+	vs <- mapM (positionToVertex3 f . posToPosition) $
+		triangleToPositions $ toTriangles $ map positionToPos ps
+	vs' <- mapM (positionToVertex3 f) ps
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
-		renderPrimitive Triangles $
-			mapM_ (vertex . positionToVertex3 f . posToPosition) $
-			triangleToPositions $
-			toTriangles $ map positionToPos ps
+		renderPrimitive Triangles $ mapM_ vertex vs
+--			mapM_ vertex . positionToVertex3 f . posToPosition) $
+--			triangleToPositions $
+--			toTriangles $ map positionToPos ps
 --		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3 f) ps
 		G.lineWidth $= fromRational (toRational lw)
 		G.color $ colorToColor4 lc
-		renderPrimitive LineLoop $ mapM_ (vertex . positionToVertex3 f) ps
+		renderPrimitive LineLoop $ mapM_ vertex vs'
 
 type Pos = (Double, Double)
 triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
@@ -303,10 +311,13 @@ positionToPos _ = error "positionToPos: not implemented"
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
 
-positionToVertex3 :: Field -> Position -> Vertex2 GLfloat
-positionToVertex3 f (Center x y) =
-	Vertex2 (fromRational $ 2 * toRational x / fromIntegral (fWidth f))
-		(fromRational $ 2 * toRational y / fromIntegral (fHeight f))
+positionToVertex3 :: Field -> Position -> IO (Vertex2 GLfloat)
+positionToVertex3 f (Center x y) = do
+	w <- readIORef $ fWidth f
+	h <- readIORef $ fHeight f
+	return $ Vertex2
+		(fromRational $ 2 * toRational x / fromIntegral w)
+		(fromRational $ 2 * toRational y / fromIntegral h)
 positionToVertex3 _ _ = error "positionToVertex3: not implemented"
 
 writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
@@ -315,10 +326,12 @@ writeString f _ _fname size clr (Center x_ y_) str =
 	atomicModifyIORef_ (fActions f) (Just action :)
 	where
 	action = preservingMatrix $ do
+		h <- readIORef $ fHeight f
+		w <- readIORef $ fWidth f
 		let	size' = size / 15
-			ratio = 3.5 * fromIntegral (fHeight f) -- 2000
-			x_ratio = 2 * ratio / fromIntegral (fWidth f)
-			y_ratio = 2 * ratio / fromIntegral (fHeight f)
+			ratio = 3.5 * fromIntegral h -- 2000
+			x_ratio = 2 * ratio / fromIntegral w
+			y_ratio = 2 * ratio / fromIntegral h
 			x = x_ratio * fromRational (toRational $ x_ / size')
 			y = y_ratio * fromRational (toRational $ y_ / size')
 --			s = 0.0005 * fromRational (toRational size')

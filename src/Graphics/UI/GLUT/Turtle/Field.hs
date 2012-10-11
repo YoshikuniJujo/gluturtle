@@ -17,6 +17,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	center,
 	coordinates,
 	fieldSize,
+	setFieldSize,
 
 	-- * draw
 	forkField,
@@ -255,6 +256,15 @@ makeFieldColor clr = preservingMatrix $ do
 		G.Vertex2 1 (-1) :: Vertex2 GLfloat ]
 
 --------------------------------------------------------------------------------
+
+setFieldSize :: Field -> Double -> Double -> IO ()
+setFieldSize f w_ h_ = do
+	let	w = round w_
+		h = round h_
+	writeIORef (fWidth f) w
+	writeIORef (fHeight f) h
+	currentWindow $= Just (fFieldWindow f)
+	G.windowSize $= Size (fromIntegral w) (fromIntegral h)
 
 drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
 drawLine f _ w c p q = do

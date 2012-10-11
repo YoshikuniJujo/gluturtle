@@ -13,6 +13,7 @@ module Graphics.UI.GLUT.Turtle.Move(
 	center,
 	coordinates,
 	fieldSize,
+	setFieldSize,
 
 	-- * draws
 	forkField,
@@ -38,7 +39,7 @@ module Graphics.UI.GLUT.Turtle.Move(
 ) where
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
-import Graphics.UI.GLUT.Turtle.Field(prompt, initialize,
+import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
 	Field, Layer, Character, Coordinates(..),
 	openField, closeField, waitField, coordinates, topleft, center,
 	fieldSize, forkField, flushField, clearLayer,

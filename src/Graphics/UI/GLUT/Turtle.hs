@@ -10,6 +10,7 @@ module Graphics.UI.GLUT.Turtle(
 	Field,
 	Turtle,
 	ColorClass,
+	setFieldSize,
 
 	-- * Field functions
 	-- ** meta
@@ -106,7 +107,7 @@ import Graphics.UI.GLUT.Turtle.State(
 	TurtleState, direction, visible, undonum, drawed, polyPoints)
 import qualified Graphics.UI.GLUT.Turtle.State as S(position, degrees, pendown)
 import Graphics.UI.GLUT.Turtle.Input(TurtleInput(..), turtleSeries)
-import Graphics.UI.GLUT.Turtle.Move(prompt, initialize,
+import Graphics.UI.GLUT.Turtle.Move(prompt, initialize, setFieldSize,
 	Field, Coordinates(..), openField, closeField, waitField,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
 	addLayer, clearLayer, addCharacter, clearCharacter, moveTurtle,

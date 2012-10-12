@@ -397,14 +397,19 @@ fillPolygon f _ ps clr lc lw =
 --------------------------------------------------------------------------------
 
 drawCharacter :: Field -> Character -> Color -> Color -> [Position] -> Double -> IO ()
-drawCharacter f _ fclr clr sh lw = writeIORef (fAction f) $
+drawCharacter f _ fclr clr sh lw = do
 	makeCharacterAction f sh fclr clr lw
+	writeIORef (fAction f) $
+		makeCharacterAction f sh fclr clr lw
 
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
-drawCharacterAndLine f _ fclr clr sh lw p q = writeIORef (fAction f) $ do
+drawCharacterAndLine f _ fclr clr sh lw p q = do
 	makeLineAction f p q clr lw
 	makeCharacterAction f sh fclr clr lw
+	writeIORef (fAction f) $ do
+		makeLineAction f p q clr lw
+		makeCharacterAction f sh fclr clr lw
 
 clearCharacter :: Field -> IO ()
 clearCharacter f = writeIORef (fAction f) $ return ()

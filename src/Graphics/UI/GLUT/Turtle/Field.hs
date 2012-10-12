@@ -96,6 +96,8 @@ prompt f p = do
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
+	fChanged :: IORef Bool,
+	fAct :: IO (),
 	fCoordinates :: Coordinates,
 
 	fBgcolor :: IORef [Color],
@@ -139,6 +141,7 @@ myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
+	fc <- newIORef False
 	fb <- newIORef False
 	fr <- newIORef False
 	fw <- newIORef w
@@ -158,29 +161,34 @@ openField name w h = do
 	wt <- createWindow name
 	wc <- createWindow "console"
 	let act = do
-		currentWindow $= Just wt
-		G.clearColor $= G.Color4 0 0 0 0
-		G.clear [G.ColorBuffer]
-		makeFieldColor . head =<< readIORef bgc
-		sequence_ . reverse . catMaybes =<< readIORef actions
-		join $ readIORef action
-		swapBuffers
-		currentWindow $= Just wc
-		G.clearColor $= G.Color4 0 0 0 0
-		G.clear [G.ColorBuffer]
-		G.lineWidth $= 1.0
-		ss1 <- readIORef str
-		ss2 <- readIORef str2
-		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
-		swapBuffers
+		change <- readIORef fc
+		when change $ do
+			currentWindow $= Just wt
+			G.clearColor $= G.Color4 0 0 0 0
+			G.clear [G.ColorBuffer]
+			makeFieldColor . head =<< readIORef bgc
+			sequence_ . reverse . catMaybes =<< readIORef actions
+			join $ readIORef action
+			swapBuffers
+			currentWindow $= Just wc
+			G.clearColor $= G.Color4 0 0 0 0
+			G.clear [G.ColorBuffer]
+			G.lineWidth $= 1.0
+			ss1 <- readIORef str
+			ss2 <- readIORef str2
+			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
+			swapBuffers
+			writeIORef fc False
 	currentWindow $= Just wt
 	displayCallback $= act
 	currentWindow $= Just wc
 	displayCallback $= act
 --	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
---	G.addTimerCallback 10 $ timerAction act
+	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
+		fChanged = fc,
+		fAct = act,
 		fCoordinates = CoordCenter,
 		fLayers = layers,
 		fAction = action,
@@ -201,11 +209,14 @@ openField name w h = do
 	 }
 	G.keyboardMouseCallback $= Just (\k ks m p -> do
 		keyboardProc f k ks m p
-		act
+		writeIORef (fChanged f) True)
+--		act)
+{-
 		busy <- readIORef $ fBusy f
 		when (k == G.Char '\r' && not busy) $ do
 			writeIORef (fBusy f) True
 			G.addTimerCallback 10 $ timerActionN f 10 act)
+-}
 --	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
 --	G.addTimerCallback 10 $ timerAction act
 	return f
@@ -405,8 +416,9 @@ drawCharacter f _ fclr clr sh lw = do
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f _ fclr clr sh lw p q = do
-	makeLineAction f p q clr lw
-	makeCharacterAction f sh fclr clr lw
+	writeIORef (fChanged f) True
+--	makeLineAction f p q clr lw
+--	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $ do
 		makeLineAction f p q clr lw
 		makeCharacterAction f sh fclr clr lw

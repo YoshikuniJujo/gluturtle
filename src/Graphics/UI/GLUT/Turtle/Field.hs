@@ -4,7 +4,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	initialize,
 
 	-- * types and classes
-	Field,
+	Field(fRunning),
 	Layer,
 	Character,
 	Coordinates(..),
@@ -117,6 +117,7 @@ data Field = Field{
 
 	fLayers :: IORef Layers,
 
+	fRunning :: IORef Bool,
 	fBusy :: IORef Bool
  }
 
@@ -139,6 +140,7 @@ myTail (x : xs) = xs
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
 	fb <- newIORef False
+	fr <- newIORef False
 	fw <- newIORef w
 	fh <- newIORef h
 	layers <- newLayers 0 (return ()) (return ()) (return ())
@@ -194,7 +196,8 @@ openField name w h = do
 
 		fBgcolor = bgc,
 
-		fBusy = fb
+		fBusy = fb,
+		fRunning = fr
 	 }
 	G.keyboardMouseCallback $= Just (\k ks m p -> do
 		keyboardProc f k ks m p
@@ -224,10 +227,14 @@ timerAction act = do
 	G.addTimerCallback 10 $ timerAction act
 
 timerActionN :: Field -> Int -> IO a -> IO ()
-timerActionN f 0 _ = writeIORef (fBusy f) False
+-- timerActionN f 0 _ = writeIORef (fBusy f) False
 timerActionN f n act = do
-	_ <- act
-	G.addTimerCallback 10 $ timerActionN f (n - 1) act
+	b <- readIORef $ fRunning f
+	print b
+	if b then act >> G.addTimerCallback 10 (timerActionN f undefined act)
+		else act >> writeIORef (fBusy f) False
+--	_ <- act
+--	G.addTimerCallback 10 $ timerActionN f (n - 1) act
 
 -- data InputType = XInput | End | Timer
 

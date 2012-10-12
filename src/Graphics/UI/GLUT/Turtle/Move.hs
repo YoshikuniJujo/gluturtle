@@ -40,7 +40,7 @@ module Graphics.UI.GLUT.Turtle.Move(
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
 import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
-	Field, Layer, Character, Coordinates(..),
+	Field(fRunning), Layer, Character, Coordinates(..),
 	openField, closeField, waitField, coordinates, topleft, center,
 	fieldSize, forkField, flushField, clearLayer,
 	clearCharacter, addLayer, addCharacter,
@@ -55,6 +55,8 @@ import Control.Concurrent(threadDelay)
 import Control.Monad(when, unless, forM_)
 import Data.Maybe(isJust)
 
+import Data.IORef
+
 --------------------------------------------------------------------------------
 
 moveTurtle :: Field -> Character -> Layer -> TurtleState -> TurtleState -> IO ()
@@ -68,11 +70,13 @@ moveTurtle f c l t0 t1 = do
 			undoField f
 			when (visible t1) $ drawTtl (direction t0) $ position t0
 	when (visible t1) $ do
+		writeIORef (fRunning f) True
 		forM_ (directions t0 t1) $ \dir -> fl $
 			drawTtl dir (position t0) >> threadDelay (interval t0)
 		forM_ (positions w h t0 t1) $ \p -> fl $
 			drawTtl (direction t1) p >> threadDelay (interval t0)
 		fl $ drawTtl (direction t1) $ position t1
+		writeIORef (fRunning f) False
 	when (visible t0 && not (visible t1)) $ fl $ clearCharacter f
 	when (clear t1) $ fl $ clearLayer l
 	unless (undo t1) $ fl $ maybe (return ()) (drawSVG f l) (draw t1)

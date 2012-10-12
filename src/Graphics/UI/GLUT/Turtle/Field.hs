@@ -141,7 +141,7 @@ myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
-	fc <- newIORef False
+	fc <- newIORef True
 	fb <- newIORef False
 	fr <- newIORef False
 	fw <- newIORef w
@@ -180,7 +180,7 @@ openField name w h = do
 			swapBuffers
 			writeIORef fc False
 	currentWindow $= Just wt
-	displayCallback $= act
+	displayCallback $= writeIORef fc True >> act
 	currentWindow $= Just wc
 	displayCallback $= act
 --	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
@@ -416,12 +416,12 @@ drawCharacter f _ fclr clr sh lw = do
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f _ fclr clr sh lw p q = do
-	writeIORef (fChanged f) True
 --	makeLineAction f p q clr lw
 --	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $ do
 		makeLineAction f p q clr lw
 		makeCharacterAction f sh fclr clr lw
+	writeIORef (fChanged f) True
 
 clearCharacter :: Field -> IO ()
 clearCharacter f = writeIORef (fAction f) $ return ()

@@ -230,7 +230,6 @@ timerActionN :: Field -> Int -> IO a -> IO ()
 -- timerActionN f 0 _ = writeIORef (fBusy f) False
 timerActionN f n act = do
 	b <- readIORef $ fRunning f
-	print b
 	if b then act >> G.addTimerCallback 10 (timerActionN f undefined act)
 		else act >> writeIORef (fBusy f) False
 --	_ <- act

@@ -40,11 +40,3 @@ waitInput = threadWaitRead . getConnection
 2012.02.20 Mon.
 
 position for xturtle and svg are different
-
-event driven のあたりをちょっと本気でなんとかしなくてはならないな。
-
-どうすれば良いか。
-
-今の実装だと、action はその都度行われるのではない。
-
-つまり、Field への action の登録時に一度実際に実行してしまえば良いのではないだろうか。

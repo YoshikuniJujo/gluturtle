@@ -96,7 +96,7 @@ prompt f p = do
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
-	fChanged :: IORef Bool,
+	fChanged :: IORef Int,
 	fAct :: IO (),
 	fCoordinates :: Coordinates,
 
@@ -141,7 +141,7 @@ myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
-	fc <- newIORef True
+	fc <- newIORef 0
 	fb <- newIORef False
 	fr <- newIORef False
 	fw <- newIORef w
@@ -162,7 +162,7 @@ openField name w h = do
 	wc <- createWindow "console"
 	let act = do
 		change <- readIORef fc
-		when change $ do
+		when (change > 0) $ do
 			currentWindow $= Just wt
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
@@ -178,9 +178,9 @@ openField name w h = do
 			ss2 <- readIORef str2
 			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
 			swapBuffers
-			writeIORef fc False
+			atomicModifyIORef_ fc (subtract 1)
 	currentWindow $= Just wt
-	displayCallback $= writeIORef fc True >> act
+	displayCallback $= atomicModifyIORef_ fc (+ 1) >> act
 	currentWindow $= Just wc
 	displayCallback $= act
 --	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
@@ -209,7 +209,7 @@ openField name w h = do
 	 }
 	G.keyboardMouseCallback $= Just (\k ks m p -> do
 		keyboardProc f k ks m p
-		writeIORef (fChanged f) True)
+		atomicModifyIORef_ (fChanged f) (+ 1))
 --		act)
 {-
 		busy <- readIORef $ fBusy f
@@ -309,6 +309,7 @@ drawLine f _ w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 --	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
+	atomicModifyIORef_ (fChanged f) (+ 1)
 	flush
 
 makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
@@ -402,8 +403,9 @@ fillRectangle f _ p w h clr = do return ()
 -}
 
 fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
-fillPolygon f _ ps clr lc lw =
+fillPolygon f _ ps clr lc lw = do
 	atomicModifyIORef_ (fActions f) (Just (makeCharacterAction f ps clr lc lw) :)
+	atomicModifyIORef_ (fChanged f) (+ 1)
 
 --------------------------------------------------------------------------------
 
@@ -412,6 +414,7 @@ drawCharacter f _ fclr clr sh lw = do
 	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $
 		makeCharacterAction f sh fclr clr lw
+	atomicModifyIORef_ (fChanged f) (+ 1)
 
 drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
@@ -421,7 +424,7 @@ drawCharacterAndLine f _ fclr clr sh lw p q = do
 	writeIORef (fAction f) $ do
 		makeLineAction f p q clr lw
 		makeCharacterAction f sh fclr clr lw
-	writeIORef (fChanged f) True
+	atomicModifyIORef_ (fChanged f) (+ 1)
 
 clearCharacter :: Field -> IO ()
 clearCharacter f = writeIORef (fAction f) $ return ()

@@ -115,7 +115,9 @@ data Field = Field{
 
 	fPrompt :: IORef String,
 
-	fLayers :: IORef Layers
+	fLayers :: IORef Layers,
+
+	fBusy :: IORef Bool
  }
 
 addLayer :: Field -> IO Layer
@@ -136,6 +138,7 @@ myTail (x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
+	fb <- newIORef False
 	fw <- newIORef w
 	fh <- newIORef h
 	layers <- newLayers 0 (return ()) (return ()) (return ())
@@ -152,11 +155,7 @@ openField name w h = do
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	wt <- createWindow name
 	wc <- createWindow "console"
-	currentWindow $= Just wt
-	displayCallback $= (sequence_ . catMaybes =<< readIORef actions)
-	currentWindow $= Just wc
-	displayCallback $= (sequence_ . catMaybes =<< readIORef actions)
-	G.addTimerCallback 10 (timerAction $ do
+	let act = do
 		currentWindow $= Just wt
 		G.clearColor $= G.Color4 0 0 0 0
 		G.clear [G.ColorBuffer]
@@ -171,7 +170,13 @@ openField name w h = do
 		ss1 <- readIORef str
 		ss2 <- readIORef str2
 		zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
-		swapBuffers)
+		swapBuffers
+	currentWindow $= Just wt
+	displayCallback $= act
+	currentWindow $= Just wc
+	displayCallback $= act
+--	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
+--	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
 		fCoordinates = CoordCenter,
@@ -187,9 +192,19 @@ openField name w h = do
 		fConsoleWindow = wc,
 		fPrompt = prmpt,
 
-		fBgcolor = bgc
+		fBgcolor = bgc,
+
+		fBusy = fb
 	 }
-	G.keyboardMouseCallback $= Just (keyboardProc f)
+	G.keyboardMouseCallback $= Just (\k ks m p -> do
+		keyboardProc f k ks m p
+		act
+		busy <- readIORef $ fBusy f
+		when (k == G.Char '\r' && not busy) $ do
+			writeIORef (fBusy f) True
+			G.addTimerCallback 10 $ timerActionN f 10 act)
+--	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
+--	G.addTimerCallback 10 $ timerAction act
 	return f
 
 printString :: GLfloat -> GLfloat -> String -> IO ()
@@ -207,6 +222,12 @@ timerAction :: IO a -> IO ()
 timerAction act = do
 	_ <- act
 	G.addTimerCallback 10 $ timerAction act
+
+timerActionN :: Field -> Int -> IO a -> IO ()
+timerActionN f 0 _ = writeIORef (fBusy f) False
+timerActionN f n act = do
+	_ <- act
+	G.addTimerCallback 10 $ timerActionN f (n - 1) act
 
 -- data InputType = XInput | End | Timer
 

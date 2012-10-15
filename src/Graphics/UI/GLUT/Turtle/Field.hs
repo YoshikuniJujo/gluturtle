@@ -76,34 +76,28 @@ initialize = do
 prompt :: Field -> String -> IO ()
 prompt f p = do
 	writeIORef (fPrompt f) p
-	atomicModifyIORef_ (fString f) (\ls -> init ls ++ [p ++ last ls])
+	atomicModifyIORef_ (fCommand f) (\ls -> init ls ++ [p ++ last ls])
 
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
-	fChanged :: IORef Int,
-	fAct :: IO (),
-	fCoordinates :: IORef Coordinates,
+	fConsoleWindow :: Window,
+	fPrompt :: IORef String,
+	fCommand :: IORef [String],
+	fHistory :: IORef [String],
 
+	fFieldWindow :: Window,
+	fWidth :: IORef Int,
+	fHeight :: IORef Int,
+	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
+
 	fAction :: IORef (IO ()),
 	fActions :: IORef [Maybe (IO ())],
 
-	fString :: IORef [String],
-	fString2 :: IORef [String],
+	fChanged :: IORef Int,
 
 	fInputtext :: IORef (String -> IO Bool),
-
-	fWidth :: IORef Int,
-	fHeight :: IORef Int,
-
-	fFieldWindow :: Window,
-	fConsoleWindow :: Window,
-
-	fPrompt :: IORef String,
-
-	fBusy :: IORef Bool,
-
 	fOnclick :: IORef (Int -> Double -> Double -> IO Bool)
  }
 
@@ -111,19 +105,21 @@ data Field = Field{
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
-	click <- newIORef (\_ _ _ -> return True)
-	fc <- newIORef 0
-	fb <- newIORef False
-	fw <- newIORef w
-	fh <- newIORef h
-	bgc <- newIORef [RGB 255 255 255]
-	action <- newIORef $ return ()
-	actions <- newIORef []
+	prmpt <- newIORef ""
 	str <- newIORef [""]
 	str2 <- newIORef []
-	inputtext <- newIORef $ const $ return True
 
-	prmpt <- newIORef ""
+	fw <- newIORef w
+	fh <- newIORef h
+	fcoord <- newIORef CoordCenter
+	bgc <- newIORef [RGB 255 255 255]
+
+	action <- newIORef $ return ()
+	actions <- newIORef []
+
+	fc <- newIORef 0
+	inputtext <- newIORef $ const $ return True
+	click <- newIORef (\_ _ _ -> return True)
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
@@ -161,25 +157,24 @@ openField name w h = do
 	displayCallback $= act
 	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
-	fcoord <- newIORef CoordCenter
 	let f = Field{
-		fChanged = fc,
-		fAct = act,
-		fCoordinates = fcoord,
-		fAction = action,
-		fActions = actions,
-		fString = str,
-		fString2 = str2,
-		fWidth = fw,
-		fHeight = fh,
-		fInputtext = inputtext,
-		fFieldWindow = wt,
 		fConsoleWindow = wc,
 		fPrompt = prmpt,
+		fCommand = str,
+		fHistory = str2,
 
+		fFieldWindow = wt,
+		fWidth = fw,
+		fHeight = fh,
+		fCoordinates = fcoord,
 		fBgcolor = bgc,
 
-		fBusy = fb,
+		fAction = action,
+		fActions = actions,
+
+		fChanged = fc,
+
+		fInputtext = inputtext,
 		fOnclick = click
 	 }
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
@@ -403,7 +398,7 @@ clearCharacter f = writeIORef (fAction f) $ return ()
 --------------------------------------------------------------------------------
 
 outputString :: Field -> String -> IO ()
-outputString f = atomicModifyIORef_ (fString2 f) . (:)
+outputString f = atomicModifyIORef_ (fHistory f) . (:)
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext
@@ -427,21 +422,21 @@ ontimer _ _ _ = return ()
 keyboardProc :: Field -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 keyboardProc f '\r' G.Down _ _ = do
 	p <- readIORef $ fPrompt f
-	str <- readIORef (fString f)
-	atomicModifyIORef_ (fString2 f) (reverse str ++)
-	writeIORef (fString f) [p]
+	str <- readIORef (fCommand f)
+	atomicModifyIORef_ (fHistory f) (reverse str ++)
+	writeIORef (fCommand f) [p]
 	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
 keyboardProc f '\b' G.Down _ _ = do
 	p <- readIORef $ fPrompt f
-	atomicModifyIORef_ (fString f) $ \s -> case s of
+	atomicModifyIORef_ (fCommand f) $ \s -> case s of
 		[""] -> [""]
 		[ss] | length ss <= length p -> s
 		_ -> case last s of
 			"" -> init (init s) ++ [init $ last $ init s]
 			_ -> init s ++ [init $ last s]
 keyboardProc f c state _ _
-	| state == G.Down = atomicModifyIORef_ (fString f) (`addToTail` c)
+	| state == G.Down = atomicModifyIORef_ (fCommand f) (`addToTail` c)
 	| otherwise = return ()
 
 addToTail :: [String] -> Char -> [String]

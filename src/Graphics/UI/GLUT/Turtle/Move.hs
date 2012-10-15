@@ -8,7 +8,6 @@ module Graphics.UI.GLUT.Turtle.Move(
 	-- * process Field
 	openField,
 	closeField,
-	waitField,
 	topleft,
 	center,
 	coordinates,
@@ -40,7 +39,7 @@ module Graphics.UI.GLUT.Turtle.Move(
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
 import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
 	Field, Coordinates(..),
-	openField, closeField, waitField, coordinates, topleft, center,
+	openField, closeField, coordinates, topleft, center,
 	fieldSize, forkField, flushField,
 	clearCharacter,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,

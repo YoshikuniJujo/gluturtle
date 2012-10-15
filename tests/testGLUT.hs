@@ -7,7 +7,7 @@ main = do
 	f <- openField "test" 640 480
 	prompt f "> "
 	t <- newTurtle f
-	onclick f $ \bn x y -> goto t x y >> return True
+	onclick f $ \_bn x y -> goto t x y >> return True
 	oninputtext f (processInput f t)
 --	speed t "slowest"
 --	fillcolor t ((255, 255, 255) :: (Int, Int, Int))

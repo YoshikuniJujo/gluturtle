@@ -8,7 +8,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	initialize,
 	openField,
 	closeField,
-	waitField,
 	topleft,
 	center,
 	coordinates,
@@ -240,10 +239,7 @@ timerAction act = do
 	G.addTimerCallback 10 $ timerAction act
 
 closeField :: Field -> IO ()
-closeField _ = return ()
-
-waitField :: Field -> IO ()
-waitField = const $ return ()
+closeField _ = G.leaveMainLoop
 
 topleft, center :: Field -> IO ()
 topleft = flip writeIORef CoordTopLeft . fCoordinates
@@ -309,15 +305,6 @@ colorToColor4 :: Color -> G.Color4 GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
-
-{-
-makeQuads :: Field -> [Position] -> Color -> IO ()
-makeQuads f ps c = do
-	vs <- mapM (positionToVertex3 f) ps
-	preservingMatrix $ do
-		G.color $ colorToColor4 c
-		renderPrimitive Quads $ mapM_ vertex vs
--}
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction f ps c lc lw = do
@@ -387,10 +374,6 @@ drawImage _f _fp _pos _w _h = return ()
 
 fillRectangle :: Field -> Position -> Double -> Double -> Color -> IO ()
 fillRectangle _f _p _w _h _clr = return ()
-{-
-	atomicModifyIORef_ (fActions f) (makeQuads f [
-		Center 0 0, Center 0 100, Center 100 100, Center 100 0] clr])
--}
 
 fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f ps clr lc lw = do

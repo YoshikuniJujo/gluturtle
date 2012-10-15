@@ -27,3 +27,7 @@ Field module を Layers module に分けたのはうまくいった。
 
 次は Field の refactoring。まだ大きいので、Layers へと移動させるべきものが、
 あるかもしれないし、または、さらにもうひとつ module を作るべきかもしれない。
+
+2012.10.15 Mon.
+
+command window に亀の影が映ってしまうのを直す

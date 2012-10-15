@@ -109,16 +109,6 @@ data Field = Field{
 
 --------------------------------------------------------------------------------
 
-undoField :: Field -> IO ()
-undoField f = do
-	a : _ <- readIORef $ fActions f
-	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
-	atomicModifyIORef_ (fActions f) myTail
-
-myTail :: [a] -> [a]
-myTail [] = error "myTail failed"
-myTail (_x : xs) = xs
-
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
 	click <- newIORef (\_ _ _ -> return True)
@@ -139,10 +129,15 @@ openField name w h = do
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	wt <- createWindow name
 	wc <- createWindow "console"
-	let act = do
-		change <- readIORef fc
-		when (change > 0) $ do
-			currentWindow $= Just wt
+	let	act = do
+			change <- readIORef fc
+			when (change > 0) $ do
+				currentWindow $= Just wc
+				actwc
+				currentWindow $= Just wt
+				actwt
+				atomicModifyIORef_ fc (subtract 1)
+		actwt = do
 			Size w' h' <- G.get G.windowSize
 			writeIORef fw $ fromIntegral w'
 			writeIORef fh $ fromIntegral h'
@@ -152,7 +147,7 @@ openField name w h = do
 			sequence_ . reverse . catMaybes =<< readIORef actions
 			join $ readIORef action
 			swapBuffers
-			currentWindow $= Just wc
+		actwc = do
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
 			G.lineWidth $= 1.0
@@ -160,7 +155,6 @@ openField name w h = do
 			ss2 <- readIORef str2
 			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
 			swapBuffers
-			atomicModifyIORef_ fc (subtract 1)
 	currentWindow $= Just wt
 	displayCallback $= atomicModifyIORef_ fc (+ 1) >> act
 	currentWindow $= Just wc
@@ -221,6 +215,12 @@ buttonToInt G.RightButton = 3
 buttonToInt G.WheelUp = 4
 buttonToInt G.WheelDown = 5
 buttonToInt (G.AdditionalButton n) = n
+
+undoField :: Field -> IO ()
+undoField f = do
+	a : _ <- readIORef $ fActions f
+	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
+	atomicModifyIORef_ (fActions f) tail
 
 printString :: GLfloat -> GLfloat -> String -> IO ()
 printString x y str =

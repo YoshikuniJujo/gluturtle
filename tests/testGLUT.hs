@@ -5,11 +5,9 @@ main :: IO ()
 main = do
 	_args <- initialize
 	f <- openField "test" 640 480
-	onclick f $ \bn x y -> do
-		putStrLn $ show bn ++ " (" ++ show x ++ ", " ++ show y ++ ")"
-		return True
 	prompt f "> "
 	t <- newTurtle f
+	onclick f $ \bn x y -> goto t x y >> return True
 	oninputtext f (processInput f t)
 --	speed t "slowest"
 --	fillcolor t ((255, 255, 255) :: (Int, Int, Int))

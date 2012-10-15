@@ -96,7 +96,7 @@ data Coordinates = CoordTopLeft | CoordCenter
 data Field = Field{
 	fChanged :: IORef Int,
 	fAct :: IO (),
-	fCoordinates :: Coordinates,
+	fCoordinates :: IORef Coordinates,
 
 	fBgcolor :: IORef [Color],
 	fAction :: IORef (IO ()),
@@ -192,10 +192,11 @@ openField name w h = do
 --	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
 	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
+	fcoord <- newIORef CoordCenter
 	let f = Field{
 		fChanged = fc,
 		fAct = act,
-		fCoordinates = CoordCenter,
+		fCoordinates = fcoord,
 --		fLayers = layers,
 		fAction = action,
 		fActions = actions,
@@ -223,8 +224,16 @@ processKeyboardMouse f (G.Char c) ks m p = do
 	keyboardProc f c ks m p
 	atomicModifyIORef_ (fChanged f) (+ 1)
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
-	let	(x, y) = (fromIntegral x_, fromIntegral y_)
-	continue <- readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
+	coord <- readIORef (fCoordinates f)
+	continue <- case coord of
+		CoordCenter -> do
+			(w, h) <- fieldSize f
+			let	x = fromIntegral x_ - (w / 2)
+				y = (h / 2) - fromIntegral y_
+			readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
+		CoordTopLeft -> do
+			let	(x, y) = (fromIntegral x_, fromIntegral y_)
+			readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
 	unless continue G.leaveMainLoop
 processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = do
 	return ()
@@ -279,7 +288,7 @@ topleft = const $ return ()
 center = const $ return ()
 
 coordinates :: Field -> IO Coordinates
-coordinates = return . fCoordinates
+coordinates = readIORef . fCoordinates
 
 fieldSize :: Field -> IO (Double, Double)
 fieldSize f = do

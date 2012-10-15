@@ -1,12 +1,9 @@
-{-# LANGUAGE DoRec #-}
-
 module Graphics.UI.GLUT.Turtle.Field(
 	initialize,
 
 	-- * types and classes
-	Field(fRunning),
-	Layer,
-	Character,
+	Field,
+--	Character,
 	Coordinates(..),
 
 	-- * basic functions
@@ -30,9 +27,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 	fillPolygon,
 	writeString,
 	drawImage,
-	undoLayer,
+--	undoLayer,
 	undoField,
-	clearLayer,
 
 	-- ** to Character
 	drawCharacter,
@@ -50,8 +46,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 	onkeypress,
 	ontimer,
 
-	addLayer,
-	addCharacter,
+--	addLayer,
+--	addCharacter,
 
 	prompt
 ) where
@@ -68,10 +64,12 @@ import Graphics.UI.GLUT(
  )
 import qualified Graphics.UI.GLUT as G
 
+{-
 import Graphics.UI.GLUT.Turtle.Layers(
 	Layers, Layer, Character, newLayers,
 	makeLayer, undoLayer, clearLayer,
 	makeCharacter)
+-}
 import Text.XML.YJSVG(Position(..), Color(..))
 
 -- import Control.Monad(when, unless, forever, replicateM, forM_, join)
@@ -118,16 +116,18 @@ data Field = Field{
 
 	fPrompt :: IORef String,
 
-	fLayers :: IORef Layers,
+--	fLayers :: IORef Layers,
 
-	fRunning :: IORef Bool,
+--	fRunning :: IORef Bool,
 	fBusy :: IORef Bool
  }
 
+{-
 addLayer :: Field -> IO Layer
 addLayer = makeLayer . fLayers
 addCharacter :: Field -> IO Character
 addCharacter = makeCharacter . fLayers
+-}
 
 --------------------------------------------------------------------------------
 
@@ -145,10 +145,9 @@ openField :: String -> Int -> Int -> IO Field
 openField name w h = do
 	fc <- newIORef 0
 	fb <- newIORef False
-	fr <- newIORef False
 	fw <- newIORef w
 	fh <- newIORef h
-	layers <- newLayers 0 (return ()) (return ()) (return ())
+--	layers <- newLayers 0 (return ()) (return ()) (return ())
 	bgc <- newIORef [RGB 255 255 255]
 	action <- newIORef $ return ()
 	actions <- newIORef [] -- [makeFieldColor $ RGB 255 255 255]
@@ -192,7 +191,7 @@ openField name w h = do
 		fChanged = fc,
 		fAct = act,
 		fCoordinates = CoordCenter,
-		fLayers = layers,
+--		fLayers = layers,
 		fAction = action,
 		fActions = actions,
 		fString = str,
@@ -206,8 +205,8 @@ openField name w h = do
 
 		fBgcolor = bgc,
 
-		fBusy = fb,
-		fRunning = fr
+		fBusy = fb
+--		fRunning = fr
 	 }
 	G.keyboardMouseCallback $= Just (\k ks m p -> do
 		keyboardProc f k ks m p
@@ -279,8 +278,8 @@ forkField _f = forkIO
 flushField :: Field -> Bool -> IO a -> IO a
 flushField _f _real act = act
 
-fieldColor :: Field -> Layer -> Color -> IO ()
-fieldColor f _l clr = do
+fieldColor :: Field -> Color -> IO ()
+fieldColor f clr = do
 --	atomicModifyIORef_ (fActions f) ((++ [makeFieldColor clr]) . myInit)
 	atomicModifyIORef_ (fBgcolor f) (clr :)
 	atomicModifyIORef_ (fActions f) (Nothing :)
@@ -305,8 +304,8 @@ setFieldSize f w_ h_ = do
 	currentWindow $= Just (fFieldWindow f)
 	G.windowSize $= Size (fromIntegral w) (fromIntegral h)
 
-drawLine :: Field -> Layer -> Double -> Color -> Position -> Position -> IO ()
-drawLine f _ w c p q = do
+drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
+drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 --	G.addTimerCallback 1 $ makeLineAction p q c
 --	swapBuffers
@@ -372,9 +371,9 @@ positionToVertex3 f (Center x y) = do
 		(fromRational $ 2 * toRational y / fromIntegral h)
 positionToVertex3 _ _ = error "positionToVertex3: not implemented"
 
-writeString :: Field -> Layer -> String -> Double -> Color -> Position ->
+writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
-writeString f _ _fname size clr (Center x_ y_) str =
+writeString f _fname size clr (Center x_ y_) str =
 	atomicModifyIORef_ (fActions f) (Just action :)
 	where
 	action = preservingMatrix $ do
@@ -393,35 +392,35 @@ writeString f _ _fname size clr (Center x_ y_) str =
 		G.clearColor $= G.Color4 0 0 0 0
 		G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
 		G.renderString G.Roman str
-writeString _ _ _ _ _ _ _ = error "writeString: not implemented"
+writeString _ _ _ _ _ _ = error "writeString: not implemented"
 
-drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
-drawImage _f _ _fp _pos _w _h = return ()
+drawImage :: Field -> FilePath -> Position -> Double -> Double -> IO ()
+drawImage _f _fp _pos _w _h = return ()
 
-fillRectangle :: Field -> Layer -> Position -> Double -> Double -> Color -> IO ()
-fillRectangle _f _ _p _w _h _clr = return ()
+fillRectangle :: Field -> Position -> Double -> Double -> Color -> IO ()
+fillRectangle _f _p _w _h _clr = return ()
 {-
 	atomicModifyIORef_ (fActions f) (makeQuads f [
 		Center 0 0, Center 0 100, Center 100 100, Center 100 0] clr])
 -}
 
-fillPolygon :: Field -> Layer -> [Position] -> Color -> Color -> Double -> IO ()
-fillPolygon f _ ps clr lc lw = do
+fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
+fillPolygon f ps clr lc lw = do
 	atomicModifyIORef_ (fActions f) (Just (makeCharacterAction f ps clr lc lw) :)
 	atomicModifyIORef_ (fChanged f) (+ 1)
 
 --------------------------------------------------------------------------------
 
-drawCharacter :: Field -> Character -> Color -> Color -> [Position] -> Double -> IO ()
-drawCharacter f _ fclr clr sh lw = do
+drawCharacter :: Field -> Color -> Color -> [Position] -> Double -> IO ()
+drawCharacter f fclr clr sh lw = do
 	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $
 		makeCharacterAction f sh fclr clr lw
 	atomicModifyIORef_ (fChanged f) (+ 1)
 
-drawCharacterAndLine ::	Field -> Character -> Color -> Color -> [Position] ->
+drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
-drawCharacterAndLine f _ fclr clr sh lw p q = do
+drawCharacterAndLine f fclr clr sh lw p q = do
 --	makeLineAction f p q clr lw
 --	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $ do

@@ -110,7 +110,7 @@ import Graphics.UI.GLUT.Turtle.Input(TurtleInput(..), turtleSeries)
 import Graphics.UI.GLUT.Turtle.Move(prompt, initialize, setFieldSize,
 	Field, Coordinates(..), openField, closeField, waitField,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
-	addLayer, clearLayer, addCharacter, clearCharacter, moveTurtle,
+	clearCharacter, moveTurtle,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	outputString)
 import Text.XML.YJSVG(SVG(..), Position(..), Color(..))
@@ -151,8 +151,8 @@ newTurtle f = do
 	index <- newIORef 1; shapesRef <- newIORef shapeTable
 	chan <- newChan; hist <- getChanContents chan
 	let states = turtleSeries hist
-	l <- addLayer f; c <- addCharacter f
-	thr <- forkField f $ zipWithM_ (moveTurtle f c l) states $ tail states
+--	_ <- addLayer f; c <- addCharacter f
+	thr <- forkField f $ zipWithM_ (moveTurtle f) states $ tail states
 	let t = Turtle {
 		field = f,
 		input = (atomicModifyIORef_ index succ >>) . writeChan chan,
@@ -160,7 +160,8 @@ newTurtle f = do
 		shapes = shapesRef,
 		inputs = fmap (flip take hist . pred) $ readIORef index,
 		killTurtle = flushField f True $
-			clearLayer l >> clearCharacter f >> killThread thr}
+--			clearLayer l >>
+			clearCharacter f >> killThread thr}
 	shape t "classic" >> input t (Undonum 0) >> return t
 
 runInputs :: Turtle -> [TurtleInput] -> IO ()

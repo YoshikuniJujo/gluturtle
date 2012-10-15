@@ -18,7 +18,6 @@ module Graphics.UI.GLUT.Turtle.Move(
 	-- * draws
 	forkField,
 	flushField,
-	clearLayer,
 	clearCharacter,
 	moveTurtle,
 
@@ -30,8 +29,8 @@ module Graphics.UI.GLUT.Turtle.Move(
 	onmotion,
 	onkeypress,
 	ontimer,
-	addLayer,
-	addCharacter,
+--	addLayer,
+--	addCharacter,
 
 	outputString,
 
@@ -40,10 +39,10 @@ module Graphics.UI.GLUT.Turtle.Move(
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
 import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
-	Field(fRunning), Layer, Character, Coordinates(..),
+	Field, Coordinates(..),
 	openField, closeField, waitField, coordinates, topleft, center,
-	fieldSize, forkField, flushField, clearLayer,
-	clearCharacter, addLayer, addCharacter,
+	fieldSize, forkField, flushField,
+	clearCharacter,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
 	drawImage, undoField, drawCharacter, drawCharacterAndLine,
@@ -55,14 +54,12 @@ import Control.Concurrent(threadDelay)
 import Control.Monad(when, unless, forM_)
 import Data.Maybe(isJust)
 
-import Data.IORef
-
 --------------------------------------------------------------------------------
 
-moveTurtle :: Field -> Character -> Layer -> TurtleState -> TurtleState -> IO ()
-moveTurtle _ _ _ _ TurtleState{sleep = Just t} = threadDelay $ 1000 * t
-moveTurtle f _ _ _ TurtleState{flush = True} = flushField f True $ return ()
-moveTurtle f c l t0 t1 = do
+moveTurtle :: Field -> TurtleState -> TurtleState -> IO ()
+moveTurtle _ _ TurtleState{sleep = Just t} = threadDelay $ 1000 * t
+moveTurtle f _ TurtleState{flush = True} = flushField f True $ return ()
+moveTurtle f t0 t1 = do
 	(w, h) <- fieldSize f
 	when (undo t1) $ fl $ do
 		when (clear t0) redraw
@@ -70,32 +67,30 @@ moveTurtle f c l t0 t1 = do
 			undoField f
 			when (visible t1) $ drawTtl (direction t0) $ position t0
 	when (visible t1) $ do
-		writeIORef (fRunning f) True
 		forM_ (directions t0 t1) $ \dir -> fl $
 			drawTtl dir (position t0) >> threadDelay (interval t0)
 		forM_ (positions w h t0 t1) $ \p -> fl $
 			drawTtl (direction t1) p >> threadDelay (interval t0)
 		fl $ drawTtl (direction t1) $ position t1
-		writeIORef (fRunning f) False
 	when (visible t0 && not (visible t1)) $ fl $ clearCharacter f
-	when (clear t1) $ fl $ clearLayer l
-	unless (undo t1) $ fl $ maybe (return ()) (drawSVG f l) (draw t1)
+--	when (clear t1) $ fl $ clearLayer l
+	unless (undo t1) $ fl $ maybe (return ()) (drawSVG f) (draw t1)
 	where
 	fl = flushField f $ stepbystep t0
-	redraw = mapM_ (drawSVG f l) $ reverse $ drawed t1
-	drawTtl dir pos = drawTurtle f c t1 dir pos begin
+	redraw = mapM_ (drawSVG f) $ reverse $ drawed t1
+	drawTtl dir pos = drawTurtle f t1 dir pos begin
 	begin	| undo t1 && pendown t0 = Just $ position t1
 		| pendown t1 = Just $ position t0
 		| otherwise = Nothing
 
-drawSVG :: Field -> Layer -> SVG -> IO ()
-drawSVG f l (Line p0 p1 clr lw) = drawLine f l lw clr p0 p1
-drawSVG f l (Rect pos w h 0 fc _) = fillRectangle f l pos w h fc
-drawSVG f l (Polyline ps fc lc lw) = fillPolygon f l ps fc lc lw
-drawSVG f l (Fill clr) = fieldColor f l clr
-drawSVG f l (Text pos sz clr fnt str) = writeString f l fnt sz clr pos str
-drawSVG f l (Image pos w h fp) = drawImage f l fp pos w h
-drawSVG _ _ _ = error "not implemented"
+drawSVG :: Field -> SVG -> IO ()
+drawSVG f (Line p0 p1 clr lw) = drawLine f lw clr p0 p1
+drawSVG f (Rect pos w h 0 fc _) = fillRectangle f pos w h fc
+drawSVG f (Polyline ps fc lc lw) = fillPolygon f ps fc lc lw
+drawSVG f (Fill clr) = fieldColor f clr
+drawSVG f (Text pos sz clr fnt str) = writeString f fnt sz clr pos str
+drawSVG f (Image pos w h fp) = drawImage f fp pos w h
+drawSVG _ _ = error "not implemented"
 
 positions :: Double -> Double -> TurtleState -> TurtleState -> [Position]
 positions w h t0 t1 =
@@ -121,8 +116,8 @@ directions t0 t1 = case directionStep t0 of
 		ds = direction t0
 		de = direction t1
 
-drawTurtle :: Field -> Character -> TurtleState -> Double -> Position ->
+drawTurtle :: Field -> TurtleState -> Double -> Position ->
 	Maybe Position -> IO ()
-drawTurtle f c ts@TurtleState{fillcolor = fclr, pencolor = clr} dir pos = maybe
-	(drawCharacter f c fclr clr (makeShape ts dir pos) (pensize ts))
-	(drawCharacterAndLine f c fclr clr (makeShape ts dir pos) (pensize ts) pos)
+drawTurtle f ts@TurtleState{fillcolor = fclr, pencolor = clr} dir pos = maybe
+	(drawCharacter f fclr clr (makeShape ts dir pos) (pensize ts))
+	(drawCharacterAndLine f fclr clr (makeShape ts dir pos) (pensize ts) pos)

@@ -162,21 +162,14 @@ openField name w h = do
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	wt <- createWindow name
-	Size w h <- G.get G.windowSize
-	writeIORef fw $ fromIntegral w
-	writeIORef fh $ fromIntegral h
-	print w
-	print h
 	wc <- createWindow "console"
 	let act = do
 		change <- readIORef fc
 		when (change > 0) $ do
 			currentWindow $= Just wt
-			Size w h <- G.get G.windowSize
-			writeIORef fw $ fromIntegral w
-			writeIORef fh $ fromIntegral h
-			print w
-			print h
+			Size w' h' <- G.get G.windowSize
+			writeIORef fw $ fromIntegral w'
+			writeIORef fh $ fromIntegral h'
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
 			makeFieldColor . head =<< readIORef bgc
@@ -390,7 +383,6 @@ positionToVertex3 :: Field -> Position -> IO (Vertex2 GLfloat)
 positionToVertex3 f (Center x y) = do
 	w <- readIORef $ fWidth f
 	h <- readIORef $ fHeight f
-	print (w, h)
 	return $ Vertex2
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)

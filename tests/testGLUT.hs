@@ -36,12 +36,12 @@ processInput f t "position" = position t >>= outputString f . show >> return Tru
 processInput _ t "penup" = penup t >> return True
 processInput _ t "pendown" = pendown t >> return True
 processInput _ t "message" = write t "KochiGothic" 100 "Hello, world!" >> return True
-processInput _ t "0very1very2very3very4very5very6very7very8very9very0very-long-line"
+processInput _ _ "0very1very2very3very4very5very6very7very8very9very0very-long-line"
 	= putStrLn "very long line" >> return True
 processInput _ t "hide" = hideturtle t >> return True
 processInput _ t "bred" = bgcolor t ((255, 0, 0) :: (Int, Int, Int)) >> return True
 processInput _ t "bgreen" = bgcolor t ((0, 255, 0) :: (Int, Int, Int)) >> return True
 processInput _ t "home" = goto t 0 0 >> return True
 processInput _ t "undo" = undo t >> return True
-processInput f t "size" = setFieldSize f 100 200 >> return True
+processInput f _ "size" = setFieldSize f 100 200 >> return True
 processInput _ _ _ = return True

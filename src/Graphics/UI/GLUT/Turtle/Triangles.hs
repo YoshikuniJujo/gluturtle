@@ -7,11 +7,12 @@ toTriangles ps
 	| length ps < 3 = []
 	| otherwise = toTrianglesTop $ deleteOnline $ deletePoint ps
 
+deletePoint :: Eq a => [a] -> [a]
 deletePoint [] = []
 deletePoint [p] = [p]
-deletePoint pa@(p0 : ps)
+deletePoint pall@(p0 : ps)
 	| p0 == last ps = ps
-	| otherwise = pa
+	| otherwise = pall
 
 toTrianglesTop :: [Pos] -> [(Pos, Pos, Pos)]
 toTrianglesTop [a, b, c] = [(a, b, c)]

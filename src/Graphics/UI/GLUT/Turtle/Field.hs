@@ -71,7 +71,7 @@ import qualified Graphics.UI.GLUT as G
 import Graphics.UI.GLUT.Turtle.Layers(
 	Layers, Layer, Character, newLayers,
 	makeLayer, undoLayer, clearLayer,
-	makeCharacter, character)
+	makeCharacter)
 import Text.XML.YJSVG(Position(..), Color(..))
 
 -- import Control.Monad(when, unless, forever, replicateM, forM_, join)
@@ -89,6 +89,7 @@ initialize = do
 	rawArgs <- getArgs
 	G.initialize prgName rawArgs
 
+prompt :: Field -> String -> IO ()
 prompt f p = do
 	writeIORef (fPrompt f) p
 	atomicModifyIORef_ (fString f) (\ls -> init ls ++ [p ++ last ls])
@@ -136,8 +137,9 @@ undoField f = do
 	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
 	atomicModifyIORef_ (fActions f) myTail
 
+myTail :: [a] -> [a]
 myTail [] = error "myTail failed"
-myTail (x : xs) = xs
+myTail (_x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
@@ -147,7 +149,7 @@ openField name w h = do
 	fw <- newIORef w
 	fh <- newIORef h
 	layers <- newLayers 0 (return ()) (return ()) (return ())
-	bgc <- newIORef $ [RGB 255 255 255]
+	bgc <- newIORef [RGB 255 255 255]
 	action <- newIORef $ return ()
 	actions <- newIORef [] -- [makeFieldColor $ RGB 255 255 255]
 	str <- newIORef [""]
@@ -237,9 +239,10 @@ timerAction act = do
 	_ <- act
 	G.addTimerCallback 10 $ timerAction act
 
+{-
 timerActionN :: Field -> Int -> IO a -> IO ()
 -- timerActionN f 0 _ = writeIORef (fBusy f) False
-timerActionN f n act = do
+timerActionN f _n act = do
 	b <- readIORef $ fRunning f
 	if b then act >> G.addTimerCallback 10 (timerActionN f undefined act)
 		else act >> writeIORef (fBusy f) False
@@ -247,6 +250,7 @@ timerActionN f n act = do
 --	G.addTimerCallback 10 $ timerActionN f (n - 1) act
 
 -- data InputType = XInput | End | Timer
+-}
 
 closeField :: Field -> IO ()
 closeField _ = return ()
@@ -281,10 +285,7 @@ fieldColor f _l clr = do
 	atomicModifyIORef_ (fBgcolor f) (clr :)
 	atomicModifyIORef_ (fActions f) (Nothing :)
 
-myInit [] = error "myInit failed"
-myInit [x] = []
-myInit (x : xs) = x : myInit xs
-
+makeFieldColor :: Color -> IO ()
 makeFieldColor clr = preservingMatrix $ do
 	G.color $ colorToColor4 clr
 	renderPrimitive Quads $ mapM_ vertex [
@@ -325,12 +326,14 @@ colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
 
+{-
 makeQuads :: Field -> [Position] -> Color -> IO ()
 makeQuads f ps c = do
 	vs <- mapM (positionToVertex3 f) ps
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
 		renderPrimitive Quads $ mapM_ vertex vs
+-}
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction f ps c lc lw = do
@@ -396,7 +399,7 @@ drawImage :: Field -> Layer -> FilePath -> Position -> Double -> Double -> IO ()
 drawImage _f _ _fp _pos _w _h = return ()
 
 fillRectangle :: Field -> Layer -> Position -> Double -> Double -> Color -> IO ()
-fillRectangle f _ p w h clr = do return ()
+fillRectangle _f _ _p _w _h _clr = return ()
 {-
 	atomicModifyIORef_ (fActions f) (makeQuads f [
 		Center 0 0, Center 0 100, Center 100 100, Center 100 0] clr])
@@ -466,7 +469,7 @@ keyboardProc f (G.Char '\b') G.Down _ _ = do
 	atomicModifyIORef_ (fString f) $ \s -> case s of
 		[""] -> [""]
 		[ss] | length ss <= length p -> s
-		s -> case last s of
+		_ -> case last s of
 			"" -> init (init s) ++ [init $ last $ init s]
 			_ -> init s ++ [init $ last s]
 keyboardProc f (G.Char c) state _ _

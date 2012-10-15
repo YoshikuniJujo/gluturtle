@@ -5,6 +5,9 @@ main :: IO ()
 main = do
 	_args <- initialize
 	f <- openField "test" 640 480
+	onclick f $ \bn x y -> do
+		putStrLn $ show bn ++ " (" ++ show x ++ ", " ++ show y ++ ")"
+		return True
 	prompt f "> "
 	t <- newTurtle f
 	oninputtext f (processInput f t)

@@ -3,7 +3,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 
 	-- * types and classes
 	Field,
---	Character,
 	Coordinates(..),
 
 	-- * basic functions
@@ -119,7 +118,9 @@ data Field = Field{
 --	fLayers :: IORef Layers,
 
 --	fRunning :: IORef Bool,
-	fBusy :: IORef Bool
+	fBusy :: IORef Bool,
+
+	fOnclick :: IORef (Int -> Double -> Double -> IO Bool)
  }
 
 {-
@@ -143,6 +144,7 @@ myTail (_x : xs) = xs
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
+	click <- newIORef (\_ _ _ -> return True)
 	fc <- newIORef 0
 	fb <- newIORef False
 	fw <- newIORef w
@@ -205,22 +207,34 @@ openField name w h = do
 
 		fBgcolor = bgc,
 
-		fBusy = fb
---		fRunning = fr
+		fBusy = fb,
+		fOnclick = click
 	 }
-	G.keyboardMouseCallback $= Just (\k ks m p -> do
-		keyboardProc f k ks m p
-		atomicModifyIORef_ (fChanged f) (+ 1))
---		act)
-{-
-		busy <- readIORef $ fBusy f
-		when (k == G.Char '\r' && not busy) $ do
-			writeIORef (fBusy f) True
-			G.addTimerCallback 10 $ timerActionN f 10 act)
--}
---	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
---	G.addTimerCallback 10 $ timerAction act
+	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
+	currentWindow $= Just wt
+	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
 	return f
+
+processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
+processKeyboardMouse f (G.Char c) ks m p = do
+	keyboardProc f c ks m p
+	atomicModifyIORef_ (fChanged f) (+ 1)
+processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
+	let	(x, y) = (fromIntegral x_, fromIntegral y_)
+	continue <- readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
+	unless continue G.leaveMainLoop
+processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = do
+	return ()
+processKeyboardMouse _f (G.SpecialKey _sk) _ks _m _p = do
+	return ()
+
+buttonToInt :: G.MouseButton -> Int
+buttonToInt G.LeftButton = 1
+buttonToInt G.MiddleButton = 2
+buttonToInt G.RightButton = 3
+buttonToInt G.WheelUp = 4
+buttonToInt G.WheelDown = 5
+buttonToInt (G.AdditionalButton n) = n
 
 printString :: GLfloat -> GLfloat -> String -> IO ()
 printString x y str =
@@ -440,7 +454,7 @@ oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext
 
 onclick, onrelease :: Field -> (Int -> Double -> Double -> IO Bool) -> IO ()
-onclick _ _ = return ()
+onclick f act = writeIORef (fOnclick f) act
 onrelease _ _ = return ()
 
 ondrag :: Field -> (Int -> Double -> Double -> IO ()) -> IO ()
@@ -455,15 +469,15 @@ onkeypress _ _ = return ()
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer _ _ _ = return ()
 
-keyboardProc :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-keyboardProc f (G.Char '\r') G.Down _ _ = do
+keyboardProc :: Field -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
+keyboardProc f '\r' G.Down _ _ = do
 	p <- readIORef $ fPrompt f
 	str <- readIORef (fString f)
 	atomicModifyIORef_ (fString2 f) (reverse str ++)
 	writeIORef (fString f) [p]
 	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
-keyboardProc f (G.Char '\b') G.Down _ _ = do
+keyboardProc f '\b' G.Down _ _ = do
 	p <- readIORef $ fPrompt f
 	atomicModifyIORef_ (fString f) $ \s -> case s of
 		[""] -> [""]
@@ -471,10 +485,9 @@ keyboardProc f (G.Char '\b') G.Down _ _ = do
 		_ -> case last s of
 			"" -> init (init s) ++ [init $ last $ init s]
 			_ -> init s ++ [init $ last s]
-keyboardProc f (G.Char c) state _ _
+keyboardProc f c state _ _
 	| state == G.Down = atomicModifyIORef_ (fString f) (`addToTail` c)
 	| otherwise = return ()
-keyboardProc _ _ _ _ _ = return ()
 
 addToTail :: [String] -> Char -> [String]
 addToTail strs c

@@ -1,11 +1,11 @@
 module Graphics.UI.GLUT.Turtle.Field(
-	initialize,
 
 	-- * types and classes
 	Field,
 	Coordinates(..),
 
 	-- * basic functions
+	initialize,
 	openField,
 	closeField,
 	waitField,
@@ -26,7 +26,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	fillPolygon,
 	writeString,
 	drawImage,
---	undoLayer,
 	undoField,
 
 	-- ** to Character
@@ -45,9 +44,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	onkeypress,
 	ontimer,
 
---	addLayer,
---	addCharacter,
-
 	prompt
 ) where
 
@@ -62,16 +58,8 @@ import Graphics.UI.GLUT(
 	DisplayMode(..), flush, currentWindow, Window
  )
 import qualified Graphics.UI.GLUT as G
-
-{-
-import Graphics.UI.GLUT.Turtle.Layers(
-	Layers, Layer, Character, newLayers,
-	makeLayer, undoLayer, clearLayer,
-	makeCharacter)
--}
 import Text.XML.YJSVG(Position(..), Color(..))
 
--- import Control.Monad(when, unless, forever, replicateM, forM_, join)
 import Control.Concurrent(ThreadId, forkIO)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
@@ -115,20 +103,10 @@ data Field = Field{
 
 	fPrompt :: IORef String,
 
---	fLayers :: IORef Layers,
-
---	fRunning :: IORef Bool,
 	fBusy :: IORef Bool,
 
 	fOnclick :: IORef (Int -> Double -> Double -> IO Bool)
  }
-
-{-
-addLayer :: Field -> IO Layer
-addLayer = makeLayer . fLayers
-addCharacter :: Field -> IO Character
-addCharacter = makeCharacter . fLayers
--}
 
 --------------------------------------------------------------------------------
 
@@ -149,10 +127,9 @@ openField name w h = do
 	fb <- newIORef False
 	fw <- newIORef w
 	fh <- newIORef h
---	layers <- newLayers 0 (return ()) (return ()) (return ())
 	bgc <- newIORef [RGB 255 255 255]
 	action <- newIORef $ return ()
-	actions <- newIORef [] -- [makeFieldColor $ RGB 255 255 255]
+	actions <- newIORef []
 	str <- newIORef [""]
 	str2 <- newIORef []
 	inputtext <- newIORef $ const $ return True
@@ -189,7 +166,6 @@ openField name w h = do
 	displayCallback $= atomicModifyIORef_ fc (+ 1) >> act
 	currentWindow $= Just wc
 	displayCallback $= act
---	G.keyboardMouseCallback $= Just (\_ _ _ _ -> act)
 	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	fcoord <- newIORef CoordCenter
@@ -197,7 +173,6 @@ openField name w h = do
 		fChanged = fc,
 		fAct = act,
 		fCoordinates = fcoord,
---		fLayers = layers,
 		fAction = action,
 		fActions = actions,
 		fString = str,
@@ -264,19 +239,6 @@ timerAction act = do
 	_ <- act
 	G.addTimerCallback 10 $ timerAction act
 
-{-
-timerActionN :: Field -> Int -> IO a -> IO ()
--- timerActionN f 0 _ = writeIORef (fBusy f) False
-timerActionN f _n act = do
-	b <- readIORef $ fRunning f
-	if b then act >> G.addTimerCallback 10 (timerActionN f undefined act)
-		else act >> writeIORef (fBusy f) False
---	_ <- act
---	G.addTimerCallback 10 $ timerActionN f (n - 1) act
-
--- data InputType = XInput | End | Timer
--}
-
 closeField :: Field -> IO ()
 closeField _ = return ()
 
@@ -284,8 +246,8 @@ waitField :: Field -> IO ()
 waitField = const $ return ()
 
 topleft, center :: Field -> IO ()
-topleft = const $ return ()
-center = const $ return ()
+topleft = flip writeIORef CoordTopLeft . fCoordinates
+center = flip writeIORef CoordCenter . fCoordinates
 
 coordinates :: Field -> IO Coordinates
 coordinates = readIORef . fCoordinates
@@ -306,7 +268,6 @@ flushField _f _real act = act
 
 fieldColor :: Field -> Color -> IO ()
 fieldColor f clr = do
---	atomicModifyIORef_ (fActions f) ((++ [makeFieldColor clr]) . myInit)
 	atomicModifyIORef_ (fBgcolor f) (clr :)
 	atomicModifyIORef_ (fActions f) (Nothing :)
 
@@ -333,15 +294,13 @@ setFieldSize f w_ h_ = do
 drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
---	G.addTimerCallback 1 $ makeLineAction p q c
---	swapBuffers
 	atomicModifyIORef_ (fChanged f) (+ 1)
 	flush
 
 makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
 makeLineAction f p q c w = preservingMatrix $ do
 	G.lineWidth $= fromRational (toRational w)
-	G.color $ colorToColor4 c -- (G.Color4 1 0 0 0 :: G.Color4 GLfloat)
+	G.color $ colorToColor4 c
 	pp <- positionToVertex3 f p
 	qq <- positionToVertex3 f q
 	renderPrimitive Lines $ mapM_ vertex [pp, qq]
@@ -362,16 +321,13 @@ makeQuads f ps c = do
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction f ps c lc lw = do
+	ps' <- mapM (positionToPos f) ps
 	vs <- mapM (positionToVertex3 f . posToPosition) $
-		triangleToPositions $ toTriangles $ map positionToPos ps
+		triangleToPositions $ toTriangles ps'
 	vs' <- mapM (positionToVertex3 f) ps
 	preservingMatrix $ do
 		G.color $ colorToColor4 c
 		renderPrimitive Triangles $ mapM_ vertex vs
---			mapM_ vertex . positionToVertex3 f . posToPosition) $
---			triangleToPositions $
---			toTriangles $ map positionToPos ps
---		renderPrimitive Polygon $ mapM_ (vertex . positionToVertex3 f) ps
 		G.lineWidth $= fromRational (toRational lw)
 		G.color $ colorToColor4 lc
 		renderPrimitive LineLoop $ mapM_ vertex vs'
@@ -381,9 +337,11 @@ triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
 triangleToPositions [] = []
 triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
 
-positionToPos :: Position -> Pos
-positionToPos (Center x y) = (x, y)
-positionToPos _ = error "positionToPos: not implemented"
+positionToPos :: Field -> Position -> IO Pos
+positionToPos _ (Center x y) = return (x, y)
+positionToPos f (TopLeft x y) = do
+	(w, h) <- fieldSize f
+	return (x - w / 2, h / 2 - y)
 
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
@@ -395,7 +353,12 @@ positionToVertex3 f (Center x y) = do
 	return $ Vertex2
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)
-positionToVertex3 _ _ = error "positionToVertex3: not implemented"
+positionToVertex3 f (TopLeft x y) = do
+	w <- readIORef $ fWidth f
+	h <- readIORef $ fHeight f
+	let	x' = 2 * toRational x / fromIntegral w - 1
+		y' = 1 - 2 * toRational y / fromIntegral h
+	return $ Vertex2 (fromRational x') (fromRational y')
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
@@ -406,12 +369,11 @@ writeString f _fname size clr (Center x_ y_) str =
 		h <- readIORef $ fHeight f
 		w <- readIORef $ fWidth f
 		let	size' = size / 15
-			ratio = 3.5 * fromIntegral h -- 2000
+			ratio = 3.5 * fromIntegral h
 			x_ratio = 2 * ratio / fromIntegral w
 			y_ratio = 2 * ratio / fromIntegral h
 			x = x_ratio * fromRational (toRational $ x_ / size')
 			y = y_ratio * fromRational (toRational $ y_ / size')
---			s = 0.0005 * fromRational (toRational size')
 			s = 1 / ratio * fromRational (toRational size')
 		G.color $ colorToColor4 clr
 		G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
@@ -447,8 +409,6 @@ drawCharacter f fclr clr sh lw = do
 drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f fclr clr sh lw p q = do
---	makeLineAction f p q clr lw
---	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $ do
 		makeLineAction f p q clr lw
 		makeCharacterAction f sh fclr clr lw

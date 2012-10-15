@@ -45,4 +45,7 @@ processInput _ t "bgreen" = bgcolor t ((0, 255, 0) :: (Int, Int, Int)) >> return
 processInput _ t "home" = goto t 0 0 >> return True
 processInput _ t "undo" = undo t >> return True
 processInput f _ "size" = setFieldSize f 100 200 >> return True
+processInput f _ "topleft" = topleft f >> return True
+processInput f _ "center" = center f >> return True
+processInput _ t "goto100" = goto t 100 100 >> return True
 processInput _ _ _ = return True

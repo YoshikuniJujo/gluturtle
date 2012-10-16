@@ -87,8 +87,7 @@ data Field = Field{
 	fHistory :: IORef [String],
 
 	fFieldWindow :: Window,
-	fWidth :: IORef Int,
-	fHeight :: IORef Int,
+	fSize :: IORef (Int, Int),
 	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
 
@@ -105,80 +104,78 @@ data Field = Field{
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
-	prmpt <- newIORef ""
-	str <- newIORef [""]
-	str2 <- newIORef []
+	fprompt <- newIORef ""
+	fcommand <- newIORef [""]
+	fhistory <- newIORef []
 
-	fw <- newIORef w
-	fh <- newIORef h
+	fsize <- newIORef (w, h)
 	fcoord <- newIORef CoordCenter
-	bgc <- newIORef [RGB 255 255 255]
+	fbgcolor <- newIORef [RGB 255 255 255]
 
-	action <- newIORef $ return ()
-	actions <- newIORef []
+	faction <- newIORef $ return ()
+	factions <- newIORef []
 
-	fc <- newIORef 0
-	inputtext <- newIORef $ const $ return True
-	click <- newIORef (\_ _ _ -> return True)
+	fchanged <- newIORef 0
+	finputtext <- newIORef $ const $ return True
+	fclick <- newIORef (\_ _ _ -> return True)
 
 	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
-	wt <- createWindow name
-	wc <- createWindow "console"
+	ffield <- createWindow name
+	fconsole <- createWindow "console"
+
 	let	act = do
-			change <- readIORef fc
+			change <- readIORef fchanged
 			when (change > 0) $ do
-				currentWindow $= Just wc
+				currentWindow $= Just fconsole
 				actwc
-				currentWindow $= Just wt
+				currentWindow $= Just ffield
 				actwt
-				atomicModifyIORef_ fc (subtract 1)
+				atomicModifyIORef_ fchanged (subtract 1)
 		actwt = do
 			Size w' h' <- G.get G.windowSize
-			writeIORef fw $ fromIntegral w'
-			writeIORef fh $ fromIntegral h'
+			writeIORef fsize $ (fromIntegral w', fromIntegral h')
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
-			makeFieldColor . head =<< readIORef bgc
-			sequence_ . reverse . catMaybes =<< readIORef actions
-			join $ readIORef action
+			makeFieldColor . head =<< readIORef fbgcolor
+			sequence_ . reverse . catMaybes =<< readIORef factions
+			join $ readIORef faction
 			swapBuffers
 		actwc = do
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
 			G.lineWidth $= 1.0
-			ss1 <- readIORef str
-			ss2 <- readIORef str2
+			ss1 <- readIORef fcommand
+			ss2 <- readIORef fhistory
 			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
 			swapBuffers
-	currentWindow $= Just wt
-	displayCallback $= atomicModifyIORef_ fc (+ 1) >> act
-	currentWindow $= Just wc
+	currentWindow $= Just ffield
+	displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
+	currentWindow $= Just fconsole
 	displayCallback $= act
 	G.addTimerCallback 10 $ timerAction act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
-		fConsoleWindow = wc,
-		fPrompt = prmpt,
-		fCommand = str,
-		fHistory = str2,
+		fConsoleWindow = fconsole,
+		fPrompt = fprompt,
+		fCommand = fcommand,
+		fHistory = fhistory,
 
-		fFieldWindow = wt,
-		fWidth = fw,
-		fHeight = fh,
+		fFieldWindow = ffield,
+		fSize = fsize,
 		fCoordinates = fcoord,
-		fBgcolor = bgc,
+		fBgcolor = fbgcolor,
 
-		fAction = action,
-		fActions = actions,
+		fAction = faction,
+		fActions = factions,
 
-		fChanged = fc,
+		fChanged = fchanged,
 
-		fInputtext = inputtext,
-		fOnclick = click
+		fInputtext = finputtext,
+		fOnclick = fclick
 	 }
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
-	currentWindow $= Just wt
+	currentWindow $= Just ffield
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
 	return f
 
@@ -245,8 +242,7 @@ coordinates = readIORef . fCoordinates
 
 fieldSize :: Field -> IO (Double, Double)
 fieldSize f = do
-	w <- readIORef $ fWidth f
-	h <- readIORef $ fHeight f
+	(w, h) <- readIORef $ fSize f
 	return (fromIntegral w, fromIntegral h)
 
 --------------------------------------------------------------------------------
@@ -277,8 +273,7 @@ setFieldSize :: Field -> Double -> Double -> IO ()
 setFieldSize f w_ h_ = do
 	let	w = round w_
 		h = round h_
-	writeIORef (fWidth f) w
-	writeIORef (fHeight f) h
+	writeIORef (fSize f) (w, h)
 	currentWindow $= Just (fFieldWindow f)
 	G.windowSize $= Size (fromIntegral w) (fromIntegral h)
 
@@ -330,14 +325,12 @@ posToPosition (x, y) = Center x y
 
 positionToVertex3 :: Field -> Position -> IO (Vertex2 GLfloat)
 positionToVertex3 f (Center x y) = do
-	w <- readIORef $ fWidth f
-	h <- readIORef $ fHeight f
+	(w, h) <- readIORef $ fSize f
 	return $ Vertex2
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)
 positionToVertex3 f (TopLeft x y) = do
-	w <- readIORef $ fWidth f
-	h <- readIORef $ fHeight f
+	(w, h) <- readIORef $ fSize f
 	let	x' = 2 * toRational x / fromIntegral w - 1
 		y' = 1 - 2 * toRational y / fromIntegral h
 	return $ Vertex2 (fromRational x') (fromRational y')
@@ -348,8 +341,7 @@ writeString f _fname size clr (Center x_ y_) str =
 	atomicModifyIORef_ (fActions f) (Just action :)
 	where
 	action = preservingMatrix $ do
-		h <- readIORef $ fHeight f
-		w <- readIORef $ fWidth f
+		(w, h) <- readIORef $ fSize f
 		let	size' = size / 15
 			ratio = 3.5 * fromIntegral h
 			x_ratio = 2 * ratio / fromIntegral w

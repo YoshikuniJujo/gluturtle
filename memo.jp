@@ -249,3 +249,8 @@ closeField がプログラムを終わらせないようにしたい。
 しかし、console window とのかねあいはどうするか。
 本来ならば、initialize の段階で console window を開いておき、
 openField は Field の open のみを行うようにするべきと思うが、どうだろうか。
+
+2012.10.16 Tue.
+
+initialize と openConsole と openField は別々にしたほうが良さそうだ。
+openConsole で作った c を openField で Maybe Console として使うのが良さそうだ。

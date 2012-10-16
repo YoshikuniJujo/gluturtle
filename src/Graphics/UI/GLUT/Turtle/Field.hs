@@ -59,7 +59,7 @@ import Graphics.UI.GLUT(
 import qualified Graphics.UI.GLUT as G
 import Text.XML.YJSVG(Position(..), Color(..))
 
-import Control.Concurrent(ThreadId, forkIO)
+import Control.Concurrent(ThreadId, forkIO, Chan, newChan, writeChan, readChan)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
@@ -71,20 +71,29 @@ initialize :: IO [String]
 initialize = do
 	prgName <- getProgName
 	rawArgs <- getArgs
-	G.initialize prgName rawArgs
+	args <- G.initialize prgName rawArgs
+	initialDisplayMode $= [RGBMode, DoubleBuffered]
+	return args
 
 prompt :: Field -> String -> IO ()
 prompt f p = do
-	writeIORef (fPrompt f) p
-	atomicModifyIORef_ (fCommand f) (\ls -> init ls ++ [p ++ last ls])
+	writeIORef (fPrompt $ fConsole f) p
+	atomicModifyIORef_ (fCommand $ fConsole f) (\ls -> init ls ++ [p ++ last ls])
 
 data Coordinates = CoordTopLeft | CoordCenter
 
-data Field = Field{
+data Console = Console{
 	fConsoleWindow :: Window,
 	fPrompt :: IORef String,
 	fCommand :: IORef [String],
 	fHistory :: IORef [String],
+	cChanged :: IORef Int,
+	cChanFull :: IORef Bool,
+	cChan :: Chan String
+ }
+
+data Field = Field{
+	fConsole :: Console,
 
 	fFieldWindow :: Window,
 	fSize :: IORef (Int, Int),
@@ -102,11 +111,46 @@ data Field = Field{
 
 --------------------------------------------------------------------------------
 
-openField :: String -> Int -> Int -> IO Field
-openField name w h = do
+openConsole :: Int -> Int -> IO Console
+openConsole w h = do
 	fprompt <- newIORef ""
 	fcommand <- newIORef [""]
 	fhistory <- newIORef []
+	cchanged <- newIORef 0
+	cchanfull <- newIORef False
+	cchan <- newChan
+
+	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
+	fconsole <- createWindow "console"
+
+	let	actwc = do
+			G.currentWindow $= Just fconsole
+			G.clearColor $= G.Color4 0 0 0 0
+			G.clear [G.ColorBuffer]
+			G.lineWidth $= 1.0
+			ss1 <- readIORef fcommand
+			ss2 <- readIORef fhistory
+			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
+			swapBuffers
+
+		c = Console{
+			fConsoleWindow = fconsole,
+			fPrompt = fprompt,
+			fCommand = fcommand,
+			fHistory = fhistory,
+			cChanged = cchanged,
+			cChanFull = cchanfull,
+			cChan = cchan
+		 }
+	G.keyboardMouseCallback $= Just (\k ks m p -> case k of
+		G.Char chr -> processKeyboard c chr ks m p
+		_ -> return ())
+	G.addTimerCallback 10 $ timerAction actwc
+	return c
+
+openField :: String -> Int -> Int -> IO Field
+openField name w h = do
+	fconsole <- openConsole w h
 
 	fsize <- newIORef (w, h)
 	fcoord <- newIORef CoordCenter
@@ -119,19 +163,22 @@ openField name w h = do
 	finputtext <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
 
-	initialDisplayMode $= [RGBMode, DoubleBuffered]
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	ffield <- createWindow name
-	fconsole <- createWindow "console"
 
 	let	act = do
 			change <- readIORef fchanged
 			when (change > 0) $ do
-				currentWindow $= Just fconsole
-				actwc
 				currentWindow $= Just ffield
 				actwt
 				atomicModifyIORef_ fchanged (subtract 1)
+		actChan = do
+			full <- readIORef $ cChanFull fconsole
+			when full $ do
+				cmd <- readChan $ cChan fconsole
+				continue <- readIORef finputtext >>= ($ cmd)
+				writeIORef (cChanFull fconsole) False
+				unless continue G.leaveMainLoop
 		actwt = do
 			Size w' h' <- G.get G.windowSize
 			writeIORef fsize $ (fromIntegral w', fromIntegral h')
@@ -141,25 +188,15 @@ openField name w h = do
 			sequence_ . reverse . catMaybes =<< readIORef factions
 			join $ readIORef faction
 			swapBuffers
-		actwc = do
-			G.clearColor $= G.Color4 0 0 0 0
-			G.clear [G.ColorBuffer]
-			G.lineWidth $= 1.0
-			ss1 <- readIORef fcommand
-			ss2 <- readIORef fhistory
-			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
-			swapBuffers
 	currentWindow $= Just ffield
 	displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
-	currentWindow $= Just fconsole
+	currentWindow $= Just (fConsoleWindow fconsole)
 	displayCallback $= act
 	G.addTimerCallback 10 $ timerAction act
+	G.addTimerCallback 10 $ timerAction actChan
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
-		fConsoleWindow = fconsole,
-		fPrompt = fprompt,
-		fCommand = fcommand,
-		fHistory = fhistory,
+		fConsole = fconsole,
 
 		fFieldWindow = ffield,
 		fSize = fsize,
@@ -174,7 +211,6 @@ openField name w h = do
 		fInputtext = finputtext,
 		fOnclick = fclick
 	 }
-	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
 	currentWindow $= Just ffield
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
 	return f
@@ -390,7 +426,7 @@ clearCharacter f = writeIORef (fAction f) $ return ()
 --------------------------------------------------------------------------------
 
 outputString :: Field -> String -> IO ()
-outputString f = atomicModifyIORef_ (fHistory f) . (:)
+outputString f = atomicModifyIORef_ (fHistory $ fConsole f) . (:)
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext
@@ -411,24 +447,44 @@ onkeypress _ _ = return ()
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer _ _ _ = return ()
 
+processKeyboard :: Console -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
+processKeyboard c '\r' G.Down _ _ = do
+	p <- readIORef $ fPrompt c
+	str <- readIORef (fCommand c)
+	atomicModifyIORef_ (fHistory c) (reverse str ++)
+	writeIORef (fCommand c) [p]
+	writeIORef (cChanFull c) True
+	writeChan (cChan c) $ drop (length p) $ concat str
+processKeyboard c '\b' G.Down _ _ = do
+	p <- readIORef $ fPrompt c
+	atomicModifyIORef_ (fCommand c) $ \s -> case s of
+		[""] -> [""]
+		[ss] | length ss <= length p -> s
+		_ -> case last s of
+			"" -> init (init s) ++ [init $ last $ init s]
+			_ -> init s ++ [init $ last s]
+processKeyboard c chr state _ _
+	| state == G.Down = atomicModifyIORef_ (fCommand c) (`addToTail` chr)
+	| otherwise = return ()
+
 keyboardProc :: Field -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 keyboardProc f '\r' G.Down _ _ = do
-	p <- readIORef $ fPrompt f
-	str <- readIORef (fCommand f)
-	atomicModifyIORef_ (fHistory f) (reverse str ++)
-	writeIORef (fCommand f) [p]
+	p <- readIORef $ fPrompt $ fConsole f
+	str <- readIORef (fCommand $ fConsole f)
+	atomicModifyIORef_ (fHistory $ fConsole f) (reverse str ++)
+	writeIORef (fCommand $ fConsole f) [p]
 	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
 	unless continue G.leaveMainLoop
 keyboardProc f '\b' G.Down _ _ = do
-	p <- readIORef $ fPrompt f
-	atomicModifyIORef_ (fCommand f) $ \s -> case s of
+	p <- readIORef $ fPrompt $ fConsole f
+	atomicModifyIORef_ (fCommand $ fConsole f) $ \s -> case s of
 		[""] -> [""]
 		[ss] | length ss <= length p -> s
 		_ -> case last s of
 			"" -> init (init s) ++ [init $ last $ init s]
 			_ -> init s ++ [init $ last s]
 keyboardProc f c state _ _
-	| state == G.Down = atomicModifyIORef_ (fCommand f) (`addToTail` c)
+	| state == G.Down = atomicModifyIORef_ (fCommand $ fConsole f) (`addToTail` c)
 	| otherwise = return ()
 
 addToTail :: [String] -> Char -> [String]

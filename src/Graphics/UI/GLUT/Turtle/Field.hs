@@ -219,7 +219,7 @@ openField name w h = do
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 processKeyboardMouse f (G.Char c) ks m p = do
-	keyboardProc f c ks m p
+	processKeyboard (fConsole f) c ks m p
 	atomicModifyIORef_ (fChanged f) (+ 1)
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
 	coord <- readIORef (fCoordinates f)
@@ -467,26 +467,6 @@ processKeyboard c '\b' G.Down _ _ = do
 			_ -> init s ++ [init $ last s]
 processKeyboard c chr state _ _
 	| state == G.Down = atomicModifyIORef_ (fCommand c) (`addToTail` chr)
-	| otherwise = return ()
-
-keyboardProc :: Field -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-keyboardProc f '\r' G.Down _ _ = do
-	p <- readIORef $ fPrompt $ fConsole f
-	str <- readIORef (fCommand $ fConsole f)
-	atomicModifyIORef_ (fHistory $ fConsole f) (reverse str ++)
-	writeIORef (fCommand $ fConsole f) [p]
-	continue <- ($ drop (length p) $ concat str) =<< readIORef (fInputtext f)
-	unless continue G.leaveMainLoop
-keyboardProc f '\b' G.Down _ _ = do
-	p <- readIORef $ fPrompt $ fConsole f
-	atomicModifyIORef_ (fCommand $ fConsole f) $ \s -> case s of
-		[""] -> [""]
-		[ss] | length ss <= length p -> s
-		_ -> case last s of
-			"" -> init (init s) ++ [init $ last $ init s]
-			_ -> init s ++ [init $ last s]
-keyboardProc f c state _ _
-	| state == G.Down = atomicModifyIORef_ (fCommand $ fConsole f) (`addToTail` c)
 	| otherwise = return ()
 
 addToTail :: [String] -> Char -> [String]

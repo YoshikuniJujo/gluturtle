@@ -29,7 +29,8 @@ library
   Other-modules:	Graphics.UI.GLUT.Turtle.Field, Graphics.UI.GLUT.Turtle.Input,
     Graphics.UI.GLUT.Turtle.Move, Graphics.UI.GLUT.Turtle.State,
     Graphics.UI.GLUT.Turtle.Data,
-    Graphics.UI.GLUT.Turtle.Triangles, Graphics.UI.GLUT.Turtle.TriangleTools
+    Graphics.UI.GLUT.Turtle.Triangles, Graphics.UI.GLUT.Turtle.TriangleTools,
+    Graphics.UI.GLUT.Turtle.GLUTools
 
 executable		testTurtle
   Hs-source-dirs:	tests, src

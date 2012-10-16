@@ -50,52 +50,40 @@ import Control.Monad
 
 import Graphics.UI.GLUT.Turtle.Triangles
 
-import Graphics.UI.GLUT(
-	createWindow, Vertex2(..), renderPrimitive, vertex, PrimitiveMode(..),
-	preservingMatrix, GLfloat, swapBuffers, ($=), displayCallback,
-	initialDisplayMode, initialWindowSize, Size(..),
-	DisplayMode(..), flush, currentWindow, Window
- )
-import qualified Graphics.UI.GLUT as G
+import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
+import Graphics.UI.GLUT.Turtle.GLUTools(
+	($=), initialize, createWindow, printLines, keyboardCallback, loop)
 import Text.XML.YJSVG(Position(..), Color(..))
 
 import Control.Concurrent(ThreadId, forkIO, Chan, newChan, writeChan, readChan)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
-import System.Environment
 
 --------------------------------------------------------------------------------
-
-initialize :: IO [String]
-initialize = do
-	prgName <- getProgName
-	rawArgs <- getArgs
-	args <- G.initialize prgName rawArgs
-	initialDisplayMode $= [RGBMode, DoubleBuffered]
-	return args
 
 prompt :: Field -> String -> IO ()
 prompt f p = do
 	writeIORef (fPrompt $ fConsole f) p
-	atomicModifyIORef_ (fCommand $ fConsole f) (\ls -> init ls ++ [p ++ last ls])
+	atomicModifyIORef_ (fCommand $ fConsole f)
+		(\ls -> init ls ++ [p ++ last ls])
 
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Console = Console{
-	fConsoleWindow :: Window,
+	fConsoleWindow :: G.Window,
 	fPrompt :: IORef String,
 	fCommand :: IORef [String],
 	fHistory :: IORef [String],
 	cChanged :: IORef Int,
-	cChanFull :: IORef Bool,
+	cChanChanged :: IORef Int,
 	cChan :: Chan String
  }
 
 data Field = Field{
 	fConsole :: Console,
 
-	fFieldWindow :: Window,
+	fFieldWindow :: G.Window,
 	fSize :: IORef (Int, Int),
 	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
@@ -113,28 +101,18 @@ data Field = Field{
 
 openConsole :: Int -> Int -> IO Console
 openConsole w h = do
+	fconsole <- createWindow "console" w h
 	fprompt <- newIORef ""
 	fcommand <- newIORef [""]
 	fhistory <- newIORef []
 	cchanged <- newIORef 0
-	cchanfull <- newIORef False
+	cchanchanged <- newIORef 0
 	cchan <- newChan
 
-	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
-	fconsole <- createWindow "console"
-
 	let	actwc = do
-			changed <- readIORef cchanged
-			when (changed > 0) $ do
-				G.currentWindow $= Just fconsole
-				G.clearColor $= G.Color4 0 0 0 0
-				G.clear [G.ColorBuffer]
-				G.lineWidth $= 1.0
-				ss1 <- readIORef fcommand
-				ss2 <- readIORef fhistory
-				zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
-				swapBuffers
-				atomicModifyIORef_ cchanged (subtract 1)
+			ss1 <- readIORef fcommand
+			ss2 <- readIORef fhistory
+			printLines fconsole 1.0 $ reverse ss1 ++ ss2
 
 		c = Console{
 			fConsoleWindow = fconsole,
@@ -142,16 +120,14 @@ openConsole w h = do
 			fCommand = fcommand,
 			fHistory = fhistory,
 			cChanged = cchanged,
-			cChanFull = cchanfull,
+			cChanChanged = cchanchanged,
 			cChan = cchan
 		 }
-	G.keyboardMouseCallback $= Just (\k ks m p -> case k of
-		G.Char chr -> do
-			atomicModifyIORef_ cchanged (+ 1)
-			processKeyboard c chr ks m p
-		_ -> return ())
-	G.addTimerCallback 10 $ atomicModifyIORef_ cchanged (+ 1) >> timerAction actwc
-	displayCallback $= atomicModifyIORef_ cchanged (+ 1) >> actwc
+	keyboardCallback $ \chr ks m p -> do
+		atomicModifyIORef_ cchanged (+ 1)
+		processKeyboard c chr ks m p
+	loop cchanged (atomicModifyIORef_ cchanged (+ 1)) $ actwc
+	G.displayCallback $= atomicModifyIORef_ cchanged (+ 1) >> actwc
 	return c
 
 openField :: String -> Int -> Int -> IO Field
@@ -169,34 +145,27 @@ openField name w h = do
 	finputtext <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
 
-	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
-	ffield <- createWindow name
+	ffield <- createWindow name w h
 
 	let	act = do
-			change <- readIORef fchanged
-			when (change > 0) $ do
-				currentWindow $= Just ffield
-				actwt
-				atomicModifyIORef_ fchanged (subtract 1)
+			G.currentWindow $= Just ffield
+			actwt
 		actChan = do
-			full <- readIORef $ cChanFull fconsole
-			when full $ do
 				cmd <- readChan $ cChan fconsole
 				continue <- readIORef finputtext >>= ($ cmd)
-				writeIORef (cChanFull fconsole) False
 				unless continue G.leaveMainLoop
 		actwt = do
-			Size w' h' <- G.get G.windowSize
+			G.Size w' h' <- G.get G.windowSize
 			writeIORef fsize $ (fromIntegral w', fromIntegral h')
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
 			makeFieldColor . head =<< readIORef fbgcolor
 			sequence_ . reverse . catMaybes =<< readIORef factions
 			join $ readIORef faction
-			swapBuffers
-	displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
-	G.addTimerCallback 10 $ timerAction act
-	G.addTimerCallback 10 $ timerAction actChan
+			G.swapBuffers
+	G.displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
+	loop fchanged (return ()) act
+	loop (cChanChanged fconsole) (return ()) actChan
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
 		fConsole = fconsole,
@@ -252,22 +221,6 @@ undoField f = do
 	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
 	atomicModifyIORef_ (fActions f) tail
 
-printString :: GLfloat -> GLfloat -> String -> IO ()
-printString x y str =
-	preservingMatrix $ do
-		G.scale (0.0005 :: GLfloat)  0.0005 0.0005
-		G.clearColor $= G.Color4 0 0 0 0
-		G.color (G.Color4 0 1 0 0 :: G.Color4 GLfloat)
-		w <- G.stringWidth G.Roman "Stroke font"
-		G.translate (G.Vector3 (x * fromIntegral w)
-			y 0 :: G.Vector3 GLfloat)
-		G.renderString G.Roman str
-
-timerAction :: IO a -> IO ()
-timerAction act = do
-	_ <- act
-	G.addTimerCallback 10 $ timerAction act
-
 closeField :: Field -> IO ()
 closeField _ = G.leaveMainLoop
 
@@ -297,13 +250,13 @@ fieldColor f clr = do
 	atomicModifyIORef_ (fActions f) (Nothing :)
 
 makeFieldColor :: Color -> IO ()
-makeFieldColor clr = preservingMatrix $ do
+makeFieldColor clr = G.preservingMatrix $ do
 	G.color $ colorToColor4 clr
-	renderPrimitive Quads $ mapM_ vertex [
+	G.renderPrimitive G.Quads $ mapM_ G.vertex [
 		G.Vertex2 (-1) (-1),
 		G.Vertex2 (-1) 1,
 		G.Vertex2 1 1,
-		G.Vertex2 1 (-1) :: Vertex2 GLfloat ]
+		G.Vertex2 1 (-1) :: G.Vertex2 G.GLfloat ]
 
 --------------------------------------------------------------------------------
 
@@ -312,24 +265,24 @@ setFieldSize f w_ h_ = do
 	let	w = round w_
 		h = round h_
 	writeIORef (fSize f) (w, h)
-	currentWindow $= Just (fFieldWindow f)
-	G.windowSize $= Size (fromIntegral w) (fromIntegral h)
+	G.currentWindow $= Just (fFieldWindow f)
+	G.windowSize $= G.Size (fromIntegral w) (fromIntegral h)
 
 drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 	atomicModifyIORef_ (fChanged f) (+ 1)
-	flush
+	G.flush
 
 makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
-makeLineAction f p q c w = preservingMatrix $ do
+makeLineAction f p q c w = G.preservingMatrix $ do
 	G.lineWidth $= fromRational (toRational w)
 	G.color $ colorToColor4 c
 	pp <- positionToVertex3 f p
 	qq <- positionToVertex3 f q
-	renderPrimitive Lines $ mapM_ vertex [pp, qq]
+	G.renderPrimitive G.Lines $ mapM_ G.vertex [pp, qq]
 
-colorToColor4 :: Color -> G.Color4 GLfloat
+colorToColor4 :: Color -> G.Color4 G.GLfloat
 colorToColor4 (RGB r g b) = G.Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
@@ -340,12 +293,12 @@ makeCharacterAction f ps c lc lw = do
 	vs <- mapM (positionToVertex3 f . posToPosition) $
 		triangleToPositions $ toTriangles ps'
 	vs' <- mapM (positionToVertex3 f) ps
-	preservingMatrix $ do
+	G.preservingMatrix $ do
 		G.color $ colorToColor4 c
-		renderPrimitive Triangles $ mapM_ vertex vs
+		G.renderPrimitive G.Triangles $ mapM_ G.vertex vs
 		G.lineWidth $= fromRational (toRational lw)
 		G.color $ colorToColor4 lc
-		renderPrimitive LineLoop $ mapM_ vertex vs'
+		G.renderPrimitive G.LineLoop $ mapM_ G.vertex vs'
 
 type Pos = (Double, Double)
 triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
@@ -361,24 +314,24 @@ positionToPos f (TopLeft x y) = do
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
 
-positionToVertex3 :: Field -> Position -> IO (Vertex2 GLfloat)
+positionToVertex3 :: Field -> Position -> IO (G.Vertex2 G.GLfloat)
 positionToVertex3 f (Center x y) = do
 	(w, h) <- readIORef $ fSize f
-	return $ Vertex2
+	return $ G.Vertex2
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)
 positionToVertex3 f (TopLeft x y) = do
 	(w, h) <- readIORef $ fSize f
 	let	x' = 2 * toRational x / fromIntegral w - 1
 		y' = 1 - 2 * toRational y / fromIntegral h
-	return $ Vertex2 (fromRational x') (fromRational y')
+	return $ G.Vertex2 (fromRational x') (fromRational y')
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
 writeString f _fname size clr (Center x_ y_) str =
 	atomicModifyIORef_ (fActions f) (Just action :)
 	where
-	action = preservingMatrix $ do
+	action = G.preservingMatrix $ do
 		(w, h) <- readIORef $ fSize f
 		let	size' = size / 15
 			ratio = 3.5 * fromIntegral h
@@ -388,9 +341,9 @@ writeString f _fname size clr (Center x_ y_) str =
 			y = y_ratio * fromRational (toRational $ y_ / size')
 			s = 1 / ratio * fromRational (toRational size')
 		G.color $ colorToColor4 clr
-		G.scale (s :: GLfloat) (s :: GLfloat) (s :: GLfloat)
+		G.scale (s :: G.GLfloat) (s :: G.GLfloat) (s :: G.GLfloat)
 		G.clearColor $= G.Color4 0 0 0 0
-		G.translate (G.Vector3 x y 0 :: G.Vector3 GLfloat)
+		G.translate (G.Vector3 x y 0 :: G.Vector3 G.GLfloat)
 		G.renderString G.Roman str
 writeString _ _ _ _ _ _ = error "writeString: not implemented"
 
@@ -455,7 +408,7 @@ processKeyboard c '\r' G.Down _ _ = do
 	str <- readIORef (fCommand c)
 	atomicModifyIORef_ (fHistory c) (reverse str ++)
 	writeIORef (fCommand c) [p]
-	writeIORef (cChanFull c) True
+	atomicModifyIORef_ (cChanChanged c) (+ 1)
 	writeChan (cChan c) $ drop (length p) $ concat str
 processKeyboard c '\b' G.Down _ _ = do
 	p <- readIORef $ fPrompt c

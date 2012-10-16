@@ -254,3 +254,6 @@ openField は Field の open のみを行うようにするべきと思うが、
 
 initialize と openConsole と openField は別々にしたほうが良さそうだ。
 openConsole で作った c を openField で Maybe Console として使うのが良さそうだ。
+
+loop に displayCallback と reshapeCallback もまとめてしまおう。
+そのための準備として、act と actChan をまとめる必要があるだろう。

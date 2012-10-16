@@ -124,14 +124,17 @@ openConsole w h = do
 	fconsole <- createWindow "console"
 
 	let	actwc = do
-			G.currentWindow $= Just fconsole
-			G.clearColor $= G.Color4 0 0 0 0
-			G.clear [G.ColorBuffer]
-			G.lineWidth $= 1.0
-			ss1 <- readIORef fcommand
-			ss2 <- readIORef fhistory
-			zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
-			swapBuffers
+			changed <- readIORef cchanged
+			when (changed > 0) $ do
+				G.currentWindow $= Just fconsole
+				G.clearColor $= G.Color4 0 0 0 0
+				G.clear [G.ColorBuffer]
+				G.lineWidth $= 1.0
+				ss1 <- readIORef fcommand
+				ss2 <- readIORef fhistory
+				zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] (reverse ss1 ++ ss2)
+				swapBuffers
+				atomicModifyIORef_ cchanged (subtract 1)
 
 		c = Console{
 			fConsoleWindow = fconsole,
@@ -143,9 +146,12 @@ openConsole w h = do
 			cChan = cchan
 		 }
 	G.keyboardMouseCallback $= Just (\k ks m p -> case k of
-		G.Char chr -> processKeyboard c chr ks m p
+		G.Char chr -> do
+			atomicModifyIORef_ cchanged (+ 1)
+			processKeyboard c chr ks m p
 		_ -> return ())
-	G.addTimerCallback 10 $ timerAction actwc
+	G.addTimerCallback 10 $ atomicModifyIORef_ cchanged (+ 1) >> timerAction actwc
+	displayCallback $= atomicModifyIORef_ cchanged (+ 1) >> actwc
 	return c
 
 openField :: String -> Int -> Int -> IO Field
@@ -188,10 +194,7 @@ openField name w h = do
 			sequence_ . reverse . catMaybes =<< readIORef factions
 			join $ readIORef faction
 			swapBuffers
-	currentWindow $= Just ffield
 	displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
-	currentWindow $= Just (fConsoleWindow fconsole)
-	displayCallback $= act
 	G.addTimerCallback 10 $ timerAction act
 	G.addTimerCallback 10 $ timerAction actChan
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
@@ -211,7 +214,6 @@ openField name w h = do
 		fInputtext = finputtext,
 		fOnclick = fclick
 	 }
-	currentWindow $= Just ffield
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
 	return f
 

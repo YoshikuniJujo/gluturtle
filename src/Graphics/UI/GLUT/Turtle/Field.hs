@@ -65,17 +65,17 @@ import Data.Maybe
 
 prompt :: Field -> String -> IO ()
 prompt f p = do
-	writeIORef (fPrompt $ fConsole f) p
-	atomicModifyIORef_ (fCommand $ fConsole f)
+	writeIORef (cPrompt $ fConsole f) p
+	atomicModifyIORef_ (cCommand $ fConsole f)
 		(\ls -> init ls ++ [p ++ last ls])
 
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Console = Console{
-	fConsoleWindow :: G.Window,
-	fPrompt :: IORef String,
-	fCommand :: IORef [String],
-	fHistory :: IORef [String],
+	cConsoleWindow :: G.Window,
+	cPrompt :: IORef String,
+	cCommand :: IORef [String],
+	cHistory :: IORef [String],
 	cChanged :: IORef Int,
 	cChanChanged :: IORef Int,
 	cChan :: Chan String
@@ -102,52 +102,51 @@ data Field = Field{
 
 openConsole :: Int -> Int -> IO Console
 openConsole w h = do
-	fconsole <- createWindow "console" w h
-	fprompt <- newIORef ""
-	fcommand <- newIORef [""]
-	fhistory <- newIORef []
+	cwindow <- createWindow "console" w h
+	cprompt <- newIORef ""
+	ccommand <- newIORef [""]
+	chistory <- newIORef []
 	cchanged <- newIORef 1
 	cchanchanged <- newIORef 0
 	cchan <- newChan
-
-	displayAction cchanged $ do
-		ss1 <- readIORef fcommand
-		ss2 <- readIORef fhistory
-		printLines fconsole 1.0 $ reverse ss1 ++ ss2
-
 	let	c = Console{
-			fConsoleWindow = fconsole,
-			fPrompt = fprompt,
-			fCommand = fcommand,
-			fHistory = fhistory,
+			cConsoleWindow = cwindow,
+			cPrompt = cprompt,
+			cCommand = ccommand,
+			cHistory = chistory,
 			cChanged = cchanged,
 			cChanChanged = cchanchanged,
 			cChan = cchan }
-
-	keyboardCallback $ \chr ks m p -> do
-		atomicModifyIORef_ cchanged (+ 1)
-		processKeyboard c chr ks m p
+	keyboardCallback $ processKeyboard c
+	displayAction cchanged $ do
+		cmd <- readIORef ccommand
+		hst <- readIORef chistory
+		printLines cwindow 1.0 $ reverse cmd ++ hst
 	return c
 
 processKeyboard ::
 	Console -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 processKeyboard console '\r' G.Down _ _ = do
-	p <- readIORef $ fPrompt console
-	str <- readIORef (fCommand console)
-	atomicModifyIORef_ (fHistory console) (reverse str ++)
-	writeIORef (fCommand console) [p]
+	atomicModifyIORef_ (cChanged console) (+ 1)
+	p <- readIORef $ cPrompt console
+	str <- readIORef (cCommand console)
+	atomicModifyIORef_ (cHistory console) (reverse str ++)
+	writeIORef (cCommand console) [p]
 	atomicModifyIORef_ (cChanChanged console) (+ 1)
 	writeChan (cChan console) $ drop (length p) $ concat str
 processKeyboard c '\b' G.Down _ _ = do
-	p <- readIORef $ fPrompt c
-	atomicModifyIORef_ (fCommand c) $ \s -> case s of
+	atomicModifyIORef_ (cChanged c) (+ 1)
+	p <- readIORef $ cPrompt c
+	atomicModifyIORef_ (cCommand c) $ \s -> case s of
 		[""] -> [""]
 		[ss] | length ss <= length p -> s
 		_ -> case last s of
 			"" -> init (init s) ++ [init $ last $ init s]
 			_ -> init s ++ [init $ last s]
 processKeyboard c chr state _ _
-	| state == G.Down = atomicModifyIORef_ (fCommand c) (`addToTail` chr)
+	| state == G.Down = do
+		atomicModifyIORef_ (cChanged c) (+ 1)
+		atomicModifyIORef_ (cCommand c) (`addToTail` chr)
 	| otherwise = return ()
 
 openField :: String -> Int -> Int -> IO Field
@@ -400,7 +399,7 @@ clearCharacter f = writeIORef (fAction f) $ return ()
 --------------------------------------------------------------------------------
 
 outputString :: Field -> String -> IO ()
-outputString f = atomicModifyIORef_ (fHistory $ fConsole f) . (:)
+outputString f = atomicModifyIORef_ (cHistory $ fConsole f) . (:)
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext

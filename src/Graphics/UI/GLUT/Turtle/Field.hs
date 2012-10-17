@@ -72,7 +72,6 @@ prompt f p = do
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Console = Console{
-	cConsoleWindow :: G.Window,
 	cPrompt :: IORef String,
 	cCommand :: IORef [String],
 	cHistory :: IORef [String],
@@ -110,7 +109,6 @@ openConsole w h = do
 	cchanchanged <- newIORef 0
 	cchan <- newChan
 	let	c = Console{
-			cConsoleWindow = cwindow,
 			cPrompt = cprompt,
 			cCommand = ccommand,
 			cHistory = chistory,
@@ -140,14 +138,19 @@ processKeyboard c '\b' G.Down _ _ = do
 	atomicModifyIORef_ (cCommand c) $ \s -> case s of
 		[""] -> [""]
 		[ss] | length ss <= length p -> s
-		_ -> case last s of
-			"" -> init (init s) ++ [init $ last $ init s]
-			_ -> init s ++ [init $ last s]
-processKeyboard c chr state _ _
-	| state == G.Down = do
-		atomicModifyIORef_ (cChanged c) (+ 1)
-		atomicModifyIORef_ (cCommand c) (`addToTail` chr)
-	| otherwise = return ()
+		_ -> case (init s, last s) of
+			(i, "") -> init i ++ [init $ last i]
+			(i, l) -> i ++ [init l]
+processKeyboard c chr G.Down _ _ = do
+	atomicModifyIORef_ (cChanged c) (+ 1)
+	atomicModifyIORef_ (cCommand c) (`addToTail` chr)
+processKeyboard _ _ _ _ _ = return ()
+
+addToTail :: [String] -> Char -> [String]
+addToTail [] _ = error "bad"
+addToTail strs c
+	| length (last strs) < 50 = init strs ++ [last strs ++ [c]]
+	| otherwise = strs ++ [[c]]
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
@@ -419,9 +422,3 @@ onkeypress _ _ = return ()
 
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer _ _ _ = return ()
-
-addToTail :: [String] -> Char -> [String]
-addToTail strs c
-	| null strs = error "bad"
-	| length (last strs) < 50 = init strs ++ [last strs ++ [c]]
-	| otherwise = strs ++ [[c]]

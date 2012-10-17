@@ -15,6 +15,8 @@ module Graphics.UI.GLUT.Turtle(
 	-- * Field functions
 	-- ** meta
 	openField,
+	openConsole,
+	setConsole,
 	closeField,
 	topleft,
 	center,
@@ -111,7 +113,7 @@ import Graphics.UI.GLUT.Turtle.Move(prompt, initialize, setFieldSize,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
 	clearCharacter, moveTurtle,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
-	outputString)
+	outputString, openConsole, setConsole)
 import Text.XML.YJSVG(SVG(..), Position(..), Color(..))
 import qualified Text.XML.YJSVG as S(center, topleft)
 

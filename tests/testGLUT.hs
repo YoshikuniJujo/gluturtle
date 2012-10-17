@@ -5,6 +5,8 @@ main :: IO ()
 main = do
 	_args <- initialize
 	f <- openField "test" 640 480
+	c <- openConsole "console" 640 480
+	setConsole f c
 	prompt f "> "
 	t <- newTurtle f
 	onclick f $ \_bn x y -> goto t x y >> return True

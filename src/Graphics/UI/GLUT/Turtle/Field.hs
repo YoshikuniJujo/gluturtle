@@ -7,6 +7,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 	-- * basic functions
 	initialize,
 	openField,
+	openConsole,
+	setConsole,
 	closeField,
 	topleft,
 	center,
@@ -103,9 +105,9 @@ data Field = Field{
 
 --------------------------------------------------------------------------------
 
-openConsole :: Int -> Int -> IO Console
-openConsole w h = do
-	cwindow <- createWindow "console" w h
+openConsole :: String -> Int -> Int -> IO Console
+openConsole name w h = do
+	cwindow <- createWindow name w h
 	cprompt <- newIORef ""
 	ccommand <- newIORef [""]
 	chistory <- newIORef []
@@ -204,9 +206,6 @@ openField name w h = do
 		fOnclick = fclick
 	 }
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
-
-	console <- openConsole w h
-	setConsole f console
 
 	return f
 

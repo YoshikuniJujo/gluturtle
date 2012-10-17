@@ -65,9 +65,13 @@ import Data.Maybe
 
 prompt :: Field -> String -> IO ()
 prompt f p = do
-	writeIORef (cPrompt $ fConsole f) p
-	atomicModifyIORef_ (cCommand $ fConsole f)
-		(\ls -> init ls ++ [p ++ last ls])
+	mc <- getConsole f
+	case mc of
+		Just c -> do
+			writeIORef (cPrompt c) p
+			atomicModifyIORef_ (cCommand c)
+				(\ls -> init ls ++ [p ++ last ls])
+		_ -> return ()
 
 data Coordinates = CoordTopLeft | CoordCenter
 
@@ -81,7 +85,7 @@ data Console = Console{
  }
 
 data Field = Field{
-	fConsole :: Console,
+	fConsole :: IORef (Maybe Console),
 
 	fFieldWindow :: G.Window,
 	fSize :: IORef (Int, Int),
@@ -182,12 +186,14 @@ openField name w h = do
 	displayAction fchanged act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 
-	fconsole <- openConsole w h
+	console <- openConsole w h
 	let	actChan = do
-			cmd <- readChan $ cChan fconsole
+			cmd <- readChan $ cChan console
 			continue <- readIORef finputtext >>= ($ cmd)
 			unless continue G.leaveMainLoop
-	loop (cChanChanged fconsole) actChan
+	loop (cChanChanged console) actChan
+
+	fconsole <- newIORef $ Just console
 	let f = Field{
 		fConsole = fconsole,
 
@@ -209,8 +215,12 @@ openField name w h = do
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 processKeyboardMouse f (G.Char c) ks m p = do
-	processKeyboard (fConsole f) c ks m p
-	atomicModifyIORef_ (fChanged f) (+ 1)
+	mc <- getConsole f
+	case mc of
+		Just con -> do
+			processKeyboard con c ks m p
+			atomicModifyIORef_ (fChanged f) (+ 1)
+		Nothing -> return ()
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
 	coord <- readIORef (fCoordinates f)
 	continue <- case coord of
@@ -401,8 +411,15 @@ clearCharacter f = writeIORef (fAction f) $ return ()
 
 --------------------------------------------------------------------------------
 
+getConsole :: Field -> IO (Maybe Console)
+getConsole = readIORef . fConsole
+
 outputString :: Field -> String -> IO ()
-outputString f = atomicModifyIORef_ (cHistory $ fConsole f) . (:)
+outputString f str = do
+	mc <- getConsole f
+	case mc of
+		Just c -> atomicModifyIORef_ (cHistory c) (str :)
+		_ -> return ()
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext

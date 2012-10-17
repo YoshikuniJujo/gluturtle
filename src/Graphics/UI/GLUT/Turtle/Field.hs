@@ -154,8 +154,6 @@ addToTail strs c
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
-	fconsole <- openConsole w h
-
 	fsize <- newIORef (w, h)
 	fcoord <- newIORef CoordCenter
 	fbgcolor <- newIORef [RGB 255 255 255]
@@ -172,10 +170,6 @@ openField name w h = do
 	let	act = do
 			G.currentWindow $= Just ffield
 			actwt
-		actChan = do
-			cmd <- readChan $ cChan fconsole
-			continue <- readIORef finputtext >>= ($ cmd)
-			unless continue G.leaveMainLoop
 		actwt = do
 			G.Size w' h' <- G.get G.windowSize
 			writeIORef fsize $ (fromIntegral w', fromIntegral h')
@@ -186,8 +180,14 @@ openField name w h = do
 			join $ readIORef faction
 			G.swapBuffers
 	displayAction fchanged act
-	loop (cChanChanged fconsole) actChan
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
+
+	fconsole <- openConsole w h
+	let	actChan = do
+			cmd <- readChan $ cChan fconsole
+			continue <- readIORef finputtext >>= ($ cmd)
+			unless continue G.leaveMainLoop
+	loop (cChanChanged fconsole) actChan
 	let f = Field{
 		fConsole = fconsole,
 

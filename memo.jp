@@ -257,3 +257,26 @@ openConsole で作った c を openField で Maybe Console として使うのが
 
 loop に displayCallback と reshapeCallback もまとめてしまおう。
 そのための準備として、act と actChan をまとめる必要があるだろう。
+
+2012.10.17 Wed.
+
+prompt を途中で変えるような需要は無いと思われるので、
+openConsole の段階で引数として指定してしまえば良いと思う。
+しかし、その前に openConsole を option にしてしまいたい。
+つまり、以下のようにしたい。
+
+c <- openConsole ...
+f <- openField
+setConsole f c
+
+Field において fConsole :: Maybe Console とすれば実現できそうだ。
+
+また、そうした場合、Field.hs から Console.hs を分けても良さそうだ。
+とすると、GLUTools.hs に移動した関数を Console.hs にもどすべきとなるかもしれない。
+
+fConsole :: Maybe Console では上記は実現できない。
+fConsole :: IORef (Maybe Console) とすればできるが、めんどくさいな。
+
+c <- openConsole ...
+f <- openField (Just c) ...
+としてもいいけど、今いちかな?

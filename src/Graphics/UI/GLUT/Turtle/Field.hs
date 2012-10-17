@@ -186,14 +186,7 @@ openField name w h = do
 	displayAction fchanged act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 
-	console <- openConsole w h
-	let	actChan = do
-			cmd <- readChan $ cChan console
-			continue <- readIORef finputtext >>= ($ cmd)
-			unless continue G.leaveMainLoop
-	loop (cChanChanged console) actChan
-
-	fconsole <- newIORef $ Just console
+	fconsole <- newIORef Nothing
 	let f = Field{
 		fConsole = fconsole,
 
@@ -211,7 +204,19 @@ openField name w h = do
 		fOnclick = fclick
 	 }
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
+
+	console <- openConsole w h
+	setConsole f console
+
 	return f
+
+setConsole :: Field -> Console -> IO ()
+setConsole f console = do
+	loop (cChanChanged console) $ do
+		cmd <- readChan $ cChan console
+		continue <- readIORef (fInputtext f) >>= ($ cmd)
+		unless continue G.leaveMainLoop
+	writeIORef (fConsole f) $ Just console
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 processKeyboardMouse f (G.Char c) ks m p = do

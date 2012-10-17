@@ -3,6 +3,7 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	createWindow,
 	printLines,
 	keyboardCallback,
+	displayAction,
 	loop,
 
 	module Graphics.UI.GLUT
@@ -55,8 +56,11 @@ keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m p -> case k of
 		f chr ks m p
 	_ -> return ())
 
-loop :: IORef Int -> IO a -> IO a -> IO ()
-loop changed pre act = G.addTimerCallback 10 $ pre >> timerAction changed act
+displayAction :: IORef Int -> IO () -> IO ()
+displayAction changed act = loop changed act >> G.displayCallback $= act
+
+loop :: IORef Int -> IO a -> IO ()
+loop changed act = G.addTimerCallback 10 $ timerAction changed act
 
 timerAction :: IORef Int -> IO a -> IO ()
 timerAction changed act = do

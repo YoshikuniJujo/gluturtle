@@ -52,7 +52,8 @@ import Graphics.UI.GLUT.Turtle.Triangles
 
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(
-	($=), initialize, createWindow, printLines, keyboardCallback, loop)
+	($=), initialize, createWindow, printLines, keyboardCallback, loop,
+	displayAction)
 import Text.XML.YJSVG(Position(..), Color(..))
 
 import Control.Concurrent(ThreadId, forkIO, Chan, newChan, writeChan, readChan)
@@ -105,30 +106,49 @@ openConsole w h = do
 	fprompt <- newIORef ""
 	fcommand <- newIORef [""]
 	fhistory <- newIORef []
-	cchanged <- newIORef 0
+	cchanged <- newIORef 1
 	cchanchanged <- newIORef 0
 	cchan <- newChan
 
-	let	actwc = do
-			ss1 <- readIORef fcommand
-			ss2 <- readIORef fhistory
-			printLines fconsole 1.0 $ reverse ss1 ++ ss2
+	displayAction cchanged $ do
+		ss1 <- readIORef fcommand
+		ss2 <- readIORef fhistory
+		printLines fconsole 1.0 $ reverse ss1 ++ ss2
 
-		c = Console{
+	let	c = Console{
 			fConsoleWindow = fconsole,
 			fPrompt = fprompt,
 			fCommand = fcommand,
 			fHistory = fhistory,
 			cChanged = cchanged,
 			cChanChanged = cchanchanged,
-			cChan = cchan
-		 }
+			cChan = cchan }
+
 	keyboardCallback $ \chr ks m p -> do
 		atomicModifyIORef_ cchanged (+ 1)
 		processKeyboard c chr ks m p
-	loop cchanged (atomicModifyIORef_ cchanged (+ 1)) $ actwc
-	G.displayCallback $= atomicModifyIORef_ cchanged (+ 1) >> actwc
 	return c
+
+processKeyboard ::
+	Console -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
+processKeyboard console '\r' G.Down _ _ = do
+	p <- readIORef $ fPrompt console
+	str <- readIORef (fCommand console)
+	atomicModifyIORef_ (fHistory console) (reverse str ++)
+	writeIORef (fCommand console) [p]
+	atomicModifyIORef_ (cChanChanged console) (+ 1)
+	writeChan (cChan console) $ drop (length p) $ concat str
+processKeyboard c '\b' G.Down _ _ = do
+	p <- readIORef $ fPrompt c
+	atomicModifyIORef_ (fCommand c) $ \s -> case s of
+		[""] -> [""]
+		[ss] | length ss <= length p -> s
+		_ -> case last s of
+			"" -> init (init s) ++ [init $ last $ init s]
+			_ -> init s ++ [init $ last s]
+processKeyboard c chr state _ _
+	| state == G.Down = atomicModifyIORef_ (fCommand c) (`addToTail` chr)
+	| otherwise = return ()
 
 openField :: String -> Int -> Int -> IO Field
 openField name w h = do
@@ -151,9 +171,9 @@ openField name w h = do
 			G.currentWindow $= Just ffield
 			actwt
 		actChan = do
-				cmd <- readChan $ cChan fconsole
-				continue <- readIORef finputtext >>= ($ cmd)
-				unless continue G.leaveMainLoop
+			cmd <- readChan $ cChan fconsole
+			continue <- readIORef finputtext >>= ($ cmd)
+			unless continue G.leaveMainLoop
 		actwt = do
 			G.Size w' h' <- G.get G.windowSize
 			writeIORef fsize $ (fromIntegral w', fromIntegral h')
@@ -163,9 +183,8 @@ openField name w h = do
 			sequence_ . reverse . catMaybes =<< readIORef factions
 			join $ readIORef faction
 			G.swapBuffers
-	G.displayCallback $= atomicModifyIORef_ fchanged (+ 1) >> act
-	loop fchanged (return ()) act
-	loop (cChanChanged fconsole) (return ()) actChan
+	displayAction fchanged act
+	loop (cChanChanged fconsole) actChan
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 	let f = Field{
 		fConsole = fconsole,
@@ -401,26 +420,6 @@ onkeypress _ _ = return ()
 
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer _ _ _ = return ()
-
-processKeyboard :: Console -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-processKeyboard c '\r' G.Down _ _ = do
-	p <- readIORef $ fPrompt c
-	str <- readIORef (fCommand c)
-	atomicModifyIORef_ (fHistory c) (reverse str ++)
-	writeIORef (fCommand c) [p]
-	atomicModifyIORef_ (cChanChanged c) (+ 1)
-	writeChan (cChan c) $ drop (length p) $ concat str
-processKeyboard c '\b' G.Down _ _ = do
-	p <- readIORef $ fPrompt c
-	atomicModifyIORef_ (fCommand c) $ \s -> case s of
-		[""] -> [""]
-		[ss] | length ss <= length p -> s
-		_ -> case last s of
-			"" -> init (init s) ++ [init $ last $ init s]
-			_ -> init s ++ [init $ last s]
-processKeyboard c chr state _ _
-	| state == G.Down = atomicModifyIORef_ (fCommand c) (`addToTail` chr)
-	| otherwise = return ()
 
 addToTail :: [String] -> Char -> [String]
 addToTail strs c

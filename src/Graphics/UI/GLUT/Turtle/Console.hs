@@ -1,7 +1,9 @@
 module Graphics.UI.GLUT.Turtle.Console (
 	Console(..),
 	openConsole,
-	processKeyboard
+	processKeyboard,
+	prompt,
+	outputString
 ) where
 
 import Data.IORef
@@ -17,6 +19,14 @@ data Console = Console{
 	cChanChanged :: IORef Int,
 	cChan :: Chan String
  }
+
+prompt :: Console -> String -> IO ()
+prompt c p = do
+	writeIORef (cPrompt c) p
+	atomicModifyIORef_ (cCommand c) (\ls -> init ls ++ [p ++ last ls])
+
+outputString :: Console -> String -> IO ()
+outputString c str = atomicModifyIORef_ (cHistory c) (str :)
 
 openConsole :: String -> Int -> Int -> IO Console
 openConsole name w h = do

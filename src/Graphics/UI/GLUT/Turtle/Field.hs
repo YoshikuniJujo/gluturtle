@@ -2,6 +2,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 
 	-- * types and classes
 	Field,
+	Console,
 	Coordinates(..),
 
 	-- * basic functions
@@ -66,16 +67,6 @@ import Data.Maybe
 import Graphics.UI.GLUT.Turtle.Console
 
 --------------------------------------------------------------------------------
-
-prompt :: Field -> String -> IO ()
-prompt f p = do
-	mc <- getConsole f
-	case mc of
-		Just c -> do
-			writeIORef (cPrompt c) p
-			atomicModifyIORef_ (cCommand c)
-				(\ls -> init ls ++ [p ++ last ls])
-		_ -> return ()
 
 data Coordinates = CoordTopLeft | CoordCenter
 
@@ -159,7 +150,7 @@ setConsole f console = do
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
 processKeyboardMouse f (G.Char c) ks m p = do
-	mc <- getConsole f
+	mc <- readIORef $ fConsole f
 	case mc of
 		Just con -> do
 			processKeyboard con c ks m p
@@ -354,16 +345,6 @@ clearCharacter :: Field -> IO ()
 clearCharacter f = writeIORef (fAction f) $ return ()
 
 --------------------------------------------------------------------------------
-
-getConsole :: Field -> IO (Maybe Console)
-getConsole = readIORef . fConsole
-
-outputString :: Field -> String -> IO ()
-outputString f str = do
-	mc <- getConsole f
-	case mc of
-		Just c -> atomicModifyIORef_ (cHistory c) (str :)
-		_ -> return ()
 
 oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext

@@ -4,7 +4,6 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	printLines,
 	keyboardCallback,
 	displayAction,
-	loop,
 	loop',
 
 	module Graphics.UI.GLUT

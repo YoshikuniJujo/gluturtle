@@ -24,7 +24,7 @@ library
   Hs-source-dirs:	src
   Exposed-modules:	Graphics.UI.GLUT.Turtle
   Build-depends:	base > 3 && < 5, yjtools >= 0.9.16, convertible >= 1.0.8,
-    yjsvg >= 0.1.14, GLUT
+    yjsvg >= 0.1.14, GLUT, stm
   Ghc-options:		-Wall
   Other-modules:	Graphics.UI.GLUT.Turtle.Field, Graphics.UI.GLUT.Turtle.Input,
     Graphics.UI.GLUT.Turtle.Move, Graphics.UI.GLUT.Turtle.State,

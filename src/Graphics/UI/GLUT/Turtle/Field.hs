@@ -49,17 +49,20 @@ module Graphics.UI.GLUT.Turtle.Field(
 	prompt
 ) where
 
+import Control.Applicative
 import Control.Monad
 
 import Graphics.UI.GLUT.Turtle.Triangles
 
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(
-	($=), initialize, createWindow, loop, loop',
+	($=), initialize, createWindow, loop',
 	displayAction)
 import Text.XML.YJSVG(Position(..), Color(..))
 
-import Control.Concurrent(ThreadId, forkIO, readChan, isEmptyChan)
+import Control.Concurrent(ThreadId, forkIO)
+import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
@@ -143,11 +146,15 @@ openField name w h = do
 setConsole :: Field -> Console -> IO ()
 setConsole f console = do
 	loop' $ do
-		empty <- isEmptyChan $ cChan console
-		unless empty $ do
-			cmd <- readChan $ cChan console
-			continue <- readIORef (fInputtext f) >>= ($ cmd)
-			unless continue G.leaveMainLoop
+		mcmd <- atomically $ do
+			emp <- isEmptyTChan $ cChan console
+			if emp then return Nothing else
+				Just <$> readTChan (cChan console)
+		case mcmd of
+			Just cmd -> do
+				continue <- readIORef (fInputtext f) >>= ($ cmd)
+				unless continue G.leaveMainLoop
+			_ -> return ()
 	writeIORef (fConsole f) $ Just console
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()

@@ -283,3 +283,8 @@ f <- openField (Just c) ...
 
 とりあえず、
 fConsole :: IORef (Maybe Console) としてやってみようかな。
+
+2012.10.18 Thu.
+
+cChan を、Chan ではなく IORef でやったほうがいいかもしれない。
+TChan を使うのもいいけど、STM 使うのは大袈裟かな。

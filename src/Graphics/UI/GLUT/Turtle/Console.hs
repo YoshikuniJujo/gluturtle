@@ -9,8 +9,8 @@ module Graphics.UI.GLUT.Turtle.Console (
 import Graphics.UI.GLUT.Turtle.GLUTools(
 	KeyState(..), Modifiers, Position,
 	createWindow, printLines, keyboardCallback, displayAction)
-import Control.Concurrent(Chan, newChan, writeChan)
--- import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 
@@ -21,8 +21,7 @@ data Console = Console{
 	cCommand :: IORef [String],
 	cHistory :: IORef [String],
 	cChanged :: IORef Int,
-	cChanChanged :: IORef Int,
-	cChan :: Chan String
+	cChan :: TChan String
  }
 
 prompt :: Console -> String -> IO ()
@@ -40,14 +39,12 @@ openConsole name w h = do
 	ccommand <- newIORef [""]
 	chistory <- newIORef []
 	cchanged <- newIORef 1
-	cchanchanged <- newIORef 0
-	cchan <- newChan
+	cchan <- atomically newTChan
 	let	c = Console{
 			cPrompt = cprompt,
 			cCommand = ccommand,
 			cHistory = chistory,
 			cChanged = cchanged,
-			cChanChanged = cchanchanged,
 			cChan = cchan }
 	keyboardCallback $ processKeyboard c
 	displayAction cchanged $ do
@@ -64,8 +61,7 @@ processKeyboard console '\r' Down _ _ = do
 	str <- readIORef (cCommand console)
 	atomicModifyIORef_ (cHistory console) (reverse str ++)
 	writeIORef (cCommand console) [p]
-	atomicModifyIORef_ (cChanChanged console) (+ 1)
-	writeChan (cChan console) $ drop (length p) $ concat str
+	atomically $ writeTChan (cChan console) $ drop (length p) $ concat str
 processKeyboard c '\b' Down _ _ = do
 	atomicModifyIORef_ (cChanged c) (+ 1)
 	p <- readIORef $ cPrompt c

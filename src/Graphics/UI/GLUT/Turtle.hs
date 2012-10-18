@@ -97,9 +97,9 @@ module Graphics.UI.GLUT.Turtle(
 	windowWidth,
 	windowHeight,
 
-	outputString,
+	consoleOutput,
 
-	prompt,
+	consolePrompt,
 
 	initialize
 ) where
@@ -109,12 +109,12 @@ import Graphics.UI.GLUT.Turtle.State(
 	TurtleState, direction, visible, undonum, drawed, polyPoints)
 import qualified Graphics.UI.GLUT.Turtle.State as S(position, degrees, pendown)
 import Graphics.UI.GLUT.Turtle.Input(TurtleInput(..), turtleSeries)
-import Graphics.UI.GLUT.Turtle.Move(prompt, initialize, setFieldSize, Console,
+import Graphics.UI.GLUT.Turtle.Move(consolePrompt, initialize, setFieldSize, Console,
 	Field, Coordinates(..), openField, closeField,
 	topleft, center, coordinates, fieldSize, forkField, flushField,
 	clearCharacter, moveTurtle,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
-	outputString, openConsole, setConsole)
+	consoleOutput, openConsole, setConsole)
 import Text.XML.YJSVG(SVG(..), Position(..), Color(..))
 import qualified Text.XML.YJSVG as S(center, topleft)
 

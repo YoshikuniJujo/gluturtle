@@ -34,13 +34,12 @@ module Graphics.UI.GLUT.Turtle.Move(
 --	addLayer,
 --	addCharacter,
 
-	outputString,
-
-	prompt
+	consoleOutput,
+	consolePrompt
 ) where
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), makeShape)
-import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
+import Graphics.UI.GLUT.Turtle.Field(consolePrompt, initialize, setFieldSize,
 	Field, Coordinates(..), openConsole, setConsole, Console,
 	openField, closeField, coordinates, topleft, center,
 	fieldSize, forkField, flushField,
@@ -48,7 +47,7 @@ import Graphics.UI.GLUT.Turtle.Field(prompt, initialize, setFieldSize,
 	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
 	drawImage, undoField, drawCharacter, drawCharacterAndLine,
-	outputString)
+	consoleOutput)
 import Text.XML.YJSVG(SVG(..), Position(..))
 import qualified Text.XML.YJSVG as S(topleft)
 

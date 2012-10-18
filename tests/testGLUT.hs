@@ -6,7 +6,7 @@ main = do
 	_args <- initialize
 	f <- openField "test" 640 480
 	c <- openConsole "console" 640 480
-	prompt c "> "
+	consolePrompt c "> "
 	setConsole f c
 	t <- newTurtle f
 	onclick f $ \_bn x y -> goto t x y >> return True
@@ -35,7 +35,7 @@ processInput _ _ t "fblue" = fillcolor t ((0, 0, 255) :: (Int, Int, Int)) >> ret
 processInput _ _ t "yellow" = pencolor t ((255, 255, 0) :: (Int, Int, Int)) >> return True
 processInput _ _ t "normal" = pensize t 1 >> return True
 processInput _ _ _ "exit" = return False
-processInput _ c t "position" = position t >>= outputString c . show >> return True
+processInput _ c t "position" = position t >>= consoleOutput c . show >> return True
 processInput _ _ t "penup" = penup t >> return True
 processInput _ _ t "pendown" = pendown t >> return True
 processInput _ _ t "message" = write t "KochiGothic" 100 "Hello, world!" >> return True

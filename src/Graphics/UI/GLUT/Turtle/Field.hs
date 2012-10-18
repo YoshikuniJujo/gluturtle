@@ -35,7 +35,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	drawCharacterAndLine,
 	clearCharacter,
 
-	outputString,
+	consoleOutput,
 
 	-- * event driven
 	oninputtext,
@@ -46,7 +46,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	onkeypress,
 	ontimer,
 
-	prompt
+	consolePrompt
 ) where
 
 import Control.Applicative
@@ -162,7 +162,7 @@ processKeyboardMouse f (G.Char c) ks m p = do
 	mc <- readIORef $ fConsole f
 	case mc of
 		Just con -> do
-			processKeyboard con c ks m p
+			consoleKeyboard con c ks m p
 			atomicModifyIORef_ (fChanged f) (+ 1)
 		Nothing -> return ()
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do

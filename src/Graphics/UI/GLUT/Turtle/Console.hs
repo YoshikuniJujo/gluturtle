@@ -10,6 +10,7 @@ import Graphics.UI.GLUT.Turtle.GLUTools(
 	KeyState(..), Modifiers, Position,
 	createWindow, printLines, keyboardCallback, displayAction)
 import Control.Concurrent(Chan, newChan, writeChan)
+-- import Control.Concurrent.STM.TChan
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 

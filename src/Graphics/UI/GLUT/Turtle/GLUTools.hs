@@ -5,6 +5,7 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	keyboardCallback,
 	displayAction,
 	loop,
+	loop',
 
 	module Graphics.UI.GLUT
 ) where
@@ -61,6 +62,9 @@ displayAction changed act = loop changed act >> G.displayCallback $= act
 loop :: IORef Int -> IO a -> IO ()
 loop changed act = G.addTimerCallback 10 $ timerAction changed act
 
+loop' :: IO a -> IO ()
+loop' act = G.addTimerCallback 10 $ timerAction' act
+
 timerAction :: IORef Int -> IO a -> IO ()
 timerAction changed act = do
 	c <- readIORef changed
@@ -68,3 +72,6 @@ timerAction changed act = do
 		_ <- act
 		atomicModifyIORef_ changed (subtract 1)
 	G.addTimerCallback 10 $ timerAction changed act
+
+timerAction' :: IO a -> IO ()
+timerAction' act = act >> G.addTimerCallback 10 (timerAction' act)

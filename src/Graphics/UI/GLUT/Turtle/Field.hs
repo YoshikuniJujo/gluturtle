@@ -55,11 +55,11 @@ import Graphics.UI.GLUT.Turtle.Triangles
 
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(
-	($=), initialize, createWindow, loop,
+	($=), initialize, createWindow, loop, loop',
 	displayAction)
 import Text.XML.YJSVG(Position(..), Color(..))
 
-import Control.Concurrent(ThreadId, forkIO, readChan)
+import Control.Concurrent(ThreadId, forkIO, readChan, isEmptyChan)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
@@ -142,10 +142,12 @@ openField name w h = do
 
 setConsole :: Field -> Console -> IO ()
 setConsole f console = do
-	loop (cChanChanged console) $ do
-		cmd <- readChan $ cChan console
-		continue <- readIORef (fInputtext f) >>= ($ cmd)
-		unless continue G.leaveMainLoop
+	loop' $ do
+		empty <- isEmptyChan $ cChan console
+		unless empty $ do
+			cmd <- readChan $ cChan console
+			continue <- readIORef (fInputtext f) >>= ($ cmd)
+			unless continue G.leaveMainLoop
 	writeIORef (fConsole f) $ Just console
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()

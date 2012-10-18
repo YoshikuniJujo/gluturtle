@@ -30,7 +30,8 @@ library
     Graphics.UI.GLUT.Turtle.Move, Graphics.UI.GLUT.Turtle.State,
     Graphics.UI.GLUT.Turtle.Data,
     Graphics.UI.GLUT.Turtle.Triangles, Graphics.UI.GLUT.Turtle.TriangleTools,
-    Graphics.UI.GLUT.Turtle.GLUTools
+    Graphics.UI.GLUT.Turtle.GLUTools,
+    Graphics.UI.GLUT.Turtle.Console
 
 executable		testTurtle
   Hs-source-dirs:	tests, src

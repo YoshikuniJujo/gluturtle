@@ -109,7 +109,7 @@ openField name w h = do
 			actwt
 		actwt = do
 			G.Size w' h' <- G.get G.windowSize
-			writeIORef fsize $ (fromIntegral w', fromIntegral h')
+			writeIORef fsize (fromIntegral w', fromIntegral h')
 			G.clearColor $= G.Color4 0 0 0 0
 			G.clear [G.ColorBuffer]
 			makeFieldColor . head =<< readIORef fbgcolor
@@ -168,10 +168,8 @@ processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
 			let	(x, y) = (fromIntegral x_, fromIntegral y_)
 			readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
 	unless continue G.leaveMainLoop
-processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = do
-	return ()
-processKeyboardMouse _f (G.SpecialKey _sk) _ks _m _p = do
-	return ()
+processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
+processKeyboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
 
 buttonToInt :: G.MouseButton -> Int
 buttonToInt G.LeftButton = 1
@@ -350,7 +348,7 @@ oninputtext :: Field -> (String -> IO Bool) -> IO ()
 oninputtext = writeIORef . fInputtext
 
 onclick, onrelease :: Field -> (Int -> Double -> Double -> IO Bool) -> IO ()
-onclick f act = writeIORef (fOnclick f) act
+onclick = writeIORef . fOnclick
 onrelease _ _ = return ()
 
 ondrag :: Field -> (Int -> Double -> Double -> IO ()) -> IO ()

@@ -34,7 +34,7 @@ printLines win w strs = do
 	G.currentWindow $= Just win
 	G.clearColor $= G.Color4 0 0 0 0
 	G.clear [G.ColorBuffer]
-	G.lineWidth $= (fromRational $ toRational w)
+	G.lineWidth $= fromRational (toRational w)
 	zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] strs
 	G.swapBuffers
 
@@ -52,8 +52,7 @@ printString x y str =
 keyboardCallback ::
 	(Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()) -> IO ()
 keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m p -> case k of
-	G.Char chr -> do
-		f chr ks m p
+	G.Char chr -> f chr ks m p
 	_ -> return ())
 
 displayAction :: IORef Int -> IO () -> IO ()

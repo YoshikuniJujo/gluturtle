@@ -6,10 +6,14 @@ module Graphics.UI.GLUT.Turtle.Console (
 	outputString
 ) where
 
-import Data.IORef
-import Data.IORef.Tools
-import Control.Concurrent
-import Graphics.UI.GLUT.Turtle.GLUTools as G
+import Graphics.UI.GLUT.Turtle.GLUTools(
+	KeyState(..), Modifiers, Position,
+	createWindow, printLines, keyboardCallback, displayAction)
+import Control.Concurrent(Chan, newChan, writeChan)
+import Data.IORef(IORef, newIORef, readIORef, writeIORef)
+import Data.IORef.Tools(atomicModifyIORef_)
+
+--------------------------------------------------------------------------------
 
 data Console = Console{
 	cPrompt :: IORef String,
@@ -52,8 +56,8 @@ openConsole name w h = do
 	return c
 
 processKeyboard ::
-	Console -> Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-processKeyboard console '\r' G.Down _ _ = do
+	Console -> Char -> KeyState -> Modifiers -> Position -> IO ()
+processKeyboard console '\r' Down _ _ = do
 	atomicModifyIORef_ (cChanged console) (+ 1)
 	p <- readIORef $ cPrompt console
 	str <- readIORef (cCommand console)
@@ -61,7 +65,7 @@ processKeyboard console '\r' G.Down _ _ = do
 	writeIORef (cCommand console) [p]
 	atomicModifyIORef_ (cChanChanged console) (+ 1)
 	writeChan (cChan console) $ drop (length p) $ concat str
-processKeyboard c '\b' G.Down _ _ = do
+processKeyboard c '\b' Down _ _ = do
 	atomicModifyIORef_ (cChanged c) (+ 1)
 	p <- readIORef $ cPrompt c
 	atomicModifyIORef_ (cCommand c) $ \s -> case s of
@@ -70,7 +74,7 @@ processKeyboard c '\b' G.Down _ _ = do
 		_ -> case (init s, last s) of
 			(i, "") -> init i ++ [init $ last i]
 			(i, l) -> i ++ [init l]
-processKeyboard c chr G.Down _ _ = do
+processKeyboard c chr Down _ _ = do
 	atomicModifyIORef_ (cChanged c) (+ 1)
 	atomicModifyIORef_ (cCommand c) (`addToTail` chr)
 processKeyboard _ _ _ _ _ = return ()

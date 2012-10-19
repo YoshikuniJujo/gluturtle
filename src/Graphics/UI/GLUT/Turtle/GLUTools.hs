@@ -1,7 +1,7 @@
 module Graphics.UI.GLUT.Turtle.GLUTools (
 	initialize,
 	createWindow,
-	printLines,
+	printCommands,
 	keyboardCallback,
 	displayAction,
 	loop',
@@ -29,8 +29,8 @@ createWindow name w h = do
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	G.createWindow name
 
-printLines :: G.Window -> Double -> [String] -> IO ()
-printLines win w strs = do
+printCommands :: G.Window -> Double -> [String] -> IO ()
+printCommands win w strs = do
 	G.currentWindow $= Just win
 	G.clearColor $= G.Color4 0 0 0 0
 	G.clear [G.ColorBuffer]
@@ -50,9 +50,9 @@ printString x y str =
 		G.renderString G.Roman str
 
 keyboardCallback ::
-	(Char -> G.KeyState -> G.Modifiers -> G.Position -> IO ()) -> IO ()
-keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m p -> case k of
-	G.Char chr -> f chr ks m p
+	(Char -> G.KeyState -> G.Modifiers -> IO ()) -> IO ()
+keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m _ -> case k of
+	G.Char chr -> f chr ks m
 	_ -> return ())
 
 displayAction :: IORef Int -> IO () -> IO ()

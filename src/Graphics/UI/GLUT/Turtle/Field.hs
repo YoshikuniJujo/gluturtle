@@ -49,7 +49,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	consolePrompt
 ) where
 
-import Control.Applicative
 import Control.Monad
 
 import Graphics.UI.GLUT.Turtle.Triangles
@@ -61,13 +60,12 @@ import Graphics.UI.GLUT.Turtle.GLUTools(
 import Text.XML.YJSVG(Position(..), Color(..))
 
 import Control.Concurrent(ThreadId, forkIO)
-import Control.Concurrent.STM.TChan
-import Control.Concurrent.STM
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
 
-import Graphics.UI.GLUT.Turtle.Console
+import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
+	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
 
 --------------------------------------------------------------------------------
 
@@ -146,10 +144,7 @@ openField name w h = do
 setConsole :: Field -> Console -> IO ()
 setConsole f console = do
 	loop' $ do
-		mcmd <- atomically $ do
-			emp <- isEmptyTChan $ cChan console
-			if emp then return Nothing else
-				Just <$> readTChan (cChan console)
+		mcmd <- consoleCommand console
 		case mcmd of
 			Just cmd -> do
 				continue <- readIORef (fInputtext f) >>= ($ cmd)
@@ -158,11 +153,11 @@ setConsole f console = do
 	writeIORef (fConsole f) $ Just console
 
 processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-processKeyboardMouse f (G.Char c) ks m p = do
+processKeyboardMouse f (G.Char c) ks m _ = do
 	mc <- readIORef $ fConsole f
 	case mc of
 		Just con -> do
-			consoleKeyboard con c ks m p
+			consoleKeyboard con c ks m
 			atomicModifyIORef_ (fChanged f) (+ 1)
 		Nothing -> return ()
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do

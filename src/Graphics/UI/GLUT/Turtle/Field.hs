@@ -70,19 +70,17 @@ import Data.Maybe
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
-	fConsole :: IORef (Maybe Console),
-
 	fFieldWindow :: G.Window,
 	fSize :: IORef (Int, Int),
 	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
 
+	fUpdate :: IORef Int,
 	fAction :: IORef (IO ()),
 	fActions :: IORef [Maybe (IO ())],
 
-	fUpdate :: IORef Int,
-
-	fInputtext :: IORef (String -> IO Bool),
+	fConsole :: IORef (Maybe Console),
+	fOncommand :: IORef (String -> IO Bool),
 	fOnclick :: IORef (Int -> Double -> Double -> IO Bool)
  }
 
@@ -98,7 +96,7 @@ openField name w h = do
 	factions <- newIORef []
 
 	fupdate <- newIORef 0
-	finputtext <- newIORef $ const $ return True
+	foncommand <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
 
 	ffield <- createWindow name w h
@@ -132,7 +130,7 @@ openField name w h = do
 
 		fUpdate = fupdate,
 
-		fInputtext = finputtext,
+		fOncommand = foncommand,
 		fOnclick = fclick
 	 }
 	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
@@ -145,7 +143,7 @@ setConsole f console = do
 		mcmd <- consoleCommand console
 		case mcmd of
 			Just cmd -> do
-				continue <- readIORef (fInputtext f) >>= ($ cmd)
+				continue <- readIORef (fOncommand f) >>= ($ cmd)
 				unless continue G.leaveMainLoop
 			_ -> return ()
 	writeIORef (fConsole f) $ Just console
@@ -347,7 +345,7 @@ clearCharacter f = writeIORef (fAction f) $ return ()
 --------------------------------------------------------------------------------
 
 oncommand :: Field -> (String -> IO Bool) -> IO ()
-oncommand = writeIORef . fInputtext
+oncommand = writeIORef . fOncommand
 
 onclick, onrelease :: Field -> (Int -> Double -> Double -> IO Bool) -> IO ()
 onclick = writeIORef . fOnclick

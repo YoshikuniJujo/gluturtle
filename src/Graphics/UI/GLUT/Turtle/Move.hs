@@ -24,7 +24,7 @@ module Graphics.UI.GLUT.Turtle.Move(
 	moveTurtle,
 
 	-- * event
-	oninputtext,
+	oncommand,
 	onclick,
 	onrelease,
 	ondrag,
@@ -44,7 +44,7 @@ import Graphics.UI.GLUT.Turtle.Field(consolePrompt, initialize, setFieldSize,
 	openField, closeField, coordinates, topleft, center,
 	fieldSize, forkField, flushField,
 	clearCharacter,
-	oninputtext, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
+	oncommand, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
 	drawImage, undoField, drawCharacter, drawCharacterAndLine,
 	consoleOutput)

@@ -10,7 +10,7 @@ main = do
 	setConsole f c
 	t <- newTurtle f
 	onclick f $ \_bn x y -> goto t x y >> return True
-	oninputtext f (processInput f c t)
+	oncommand f (processInput f c t)
 --	speed t "slowest"
 --	fillcolor t ((255, 255, 255) :: (Int, Int, Int))
 --	pencolor t ((255, 255, 255) :: (Int, Int, Int))

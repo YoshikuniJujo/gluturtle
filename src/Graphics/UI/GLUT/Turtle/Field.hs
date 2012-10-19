@@ -40,7 +40,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	clearCharacter,
 
 	-- * event driven
-	oninputtext,
+	oncommand,
 	onclick,
 	onrelease,
 	ondrag,
@@ -80,7 +80,7 @@ data Field = Field{
 	fAction :: IORef (IO ()),
 	fActions :: IORef [Maybe (IO ())],
 
-	fChanged :: IORef Int,
+	fUpdate :: IORef Int,
 
 	fInputtext :: IORef (String -> IO Bool),
 	fOnclick :: IORef (Int -> Double -> Double -> IO Bool)
@@ -97,7 +97,7 @@ openField name w h = do
 	faction <- newIORef $ return ()
 	factions <- newIORef []
 
-	fchanged <- newIORef 0
+	fupdate <- newIORef 0
 	finputtext <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
 
@@ -115,7 +115,7 @@ openField name w h = do
 			sequence_ . reverse . catMaybes =<< readIORef factions
 			join $ readIORef faction
 			G.swapBuffers
-	displayAction fchanged act
+	displayAction fupdate act
 	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
 
 	fconsole <- newIORef Nothing
@@ -130,7 +130,7 @@ openField name w h = do
 		fAction = faction,
 		fActions = factions,
 
-		fChanged = fchanged,
+		fUpdate = fupdate,
 
 		fInputtext = finputtext,
 		fOnclick = fclick
@@ -156,7 +156,7 @@ processKeyboardMouse f (G.Char c) ks m _ = do
 	case mc of
 		Just con -> do
 			consoleKeyboard con c ks m
-			atomicModifyIORef_ (fChanged f) (+ 1)
+			atomicModifyIORef_ (fUpdate f) (+ 1)
 		Nothing -> return ()
 processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
 	coord <- readIORef (fCoordinates f)
@@ -237,7 +237,7 @@ setFieldSize f w_ h_ = do
 drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
-	atomicModifyIORef_ (fChanged f) (+ 1)
+	atomicModifyIORef_ (fUpdate f) (+ 1)
 	G.flush
 
 makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
@@ -322,7 +322,7 @@ fillRectangle _f _p _w _h _clr = return ()
 fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f ps clr lc lw = do
 	atomicModifyIORef_ (fActions f) (Just (makeCharacterAction f ps clr lc lw) :)
-	atomicModifyIORef_ (fChanged f) (+ 1)
+	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 --------------------------------------------------------------------------------
 
@@ -331,7 +331,7 @@ drawCharacter f fclr clr sh lw = do
 	makeCharacterAction f sh fclr clr lw
 	writeIORef (fAction f) $
 		makeCharacterAction f sh fclr clr lw
-	atomicModifyIORef_ (fChanged f) (+ 1)
+	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
@@ -339,15 +339,15 @@ drawCharacterAndLine f fclr clr sh lw p q = do
 	writeIORef (fAction f) $ do
 		makeLineAction f p q clr lw
 		makeCharacterAction f sh fclr clr lw
-	atomicModifyIORef_ (fChanged f) (+ 1)
+	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 clearCharacter :: Field -> IO ()
 clearCharacter f = writeIORef (fAction f) $ return ()
 
 --------------------------------------------------------------------------------
 
-oninputtext :: Field -> (String -> IO Bool) -> IO ()
-oninputtext = writeIORef . fInputtext
+oncommand :: Field -> (String -> IO Bool) -> IO ()
+oncommand = writeIORef . fInputtext
 
 onclick, onrelease :: Field -> (Int -> Double -> Double -> IO Bool) -> IO ()
 onclick = writeIORef . fOnclick

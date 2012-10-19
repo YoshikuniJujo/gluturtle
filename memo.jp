@@ -307,3 +307,7 @@ printString や separateLines には Window 引数が必要になるだろう。
 currentWindow $= Just window
 Size w h <- get windowSize
 で何とかなるだろう。
+
+次は keyboardMouseCallback を改良して、Key の Mouse の種類を
+Int とできるようにする。
+つまり、Key の上書きが必要だ。

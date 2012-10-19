@@ -15,12 +15,14 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	setWindowSize,
 	leaveUnless,
 
+	Key(..),
+
 	module Graphics.UI.GLUT
 ) where
 
 import Graphics.UI.GLUT hiding (
 	initialize, createWindow, keyboardMouseCallback, currentWindow,
-	windowSize)
+	windowSize, Key(..), SpecialKey)
 import qualified Graphics.UI.GLUT as G
 import System.Environment
 import Control.Monad
@@ -28,7 +30,11 @@ import Data.IORef
 import Data.IORef.Tools
 import Control.Applicative
 
-type Pos = Position
+data Key = Char Char | MouseButton Int | SpecialKey SpecialKey
+	deriving Show
+
+data SpecialKey = SK
+	deriving Show
 
 initialize :: IO [String]
 initialize = do
@@ -89,9 +95,22 @@ keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m _ -> case k of
 	_ -> return ())
 
 keyboardMouseCallback ::
-	(G.Key -> G.KeyState -> G.Modifiers -> (Double, Double) -> IO ()) -> IO ()
+	(Key -> G.KeyState -> G.Modifiers -> (Double, Double) -> IO ()) -> IO ()
 keyboardMouseCallback fun = (G.keyboardMouseCallback $=) $ Just $
-	\k ks m (Position x y) ->fun k ks m (fromIntegral x, fromIntegral y)
+	\k ks m (Position x y) ->fun (gKeyToKey k) ks m (fromIntegral x, fromIntegral y)
+
+gKeyToKey :: G.Key -> Key
+gKeyToKey (G.Char c) = Char c
+gKeyToKey (G.MouseButton b) = MouseButton $ buttonToInt b
+gKeyToKey (G.SpecialKey _) = SpecialKey SK
+
+buttonToInt :: G.MouseButton -> Int
+buttonToInt G.LeftButton = 1
+buttonToInt G.MiddleButton = 2
+buttonToInt G.RightButton = 3
+buttonToInt G.WheelUp = 4
+buttonToInt G.WheelDown = 5
+buttonToInt (G.AdditionalButton n) = n
 
 displayAction :: IORef Int -> IO () -> IO ()
 displayAction changed act = loop_ changed act >> G.displayCallback $= act

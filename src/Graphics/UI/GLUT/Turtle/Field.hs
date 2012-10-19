@@ -146,9 +146,9 @@ procKboardMouse field (G.MouseButton mb) Down _ (x_, y_) = do
 		CoordCenter -> do
 			(x, y) <- toCenter field x_ y_
 			readIORef (fOnclick field) >>=
-				(\fun -> fun (buttonToInt mb) x y)
+				(\fun -> fun mb x y)
 		CoordTopLeft -> readIORef (fOnclick field) >>=
-			(\fun -> fun (buttonToInt mb) x_ y_)
+			(\fun -> fun mb x_ y_)
 	leaveUnless continue
 procKboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
 procKboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
@@ -157,14 +157,6 @@ toCenter :: Field -> Double -> Double -> IO Pos
 toCenter field x y = do
 	(w, h) <- fieldSize field
 	return (x - w / 2, h / 2 - y)
-
-buttonToInt :: G.MouseButton -> Int
-buttonToInt G.LeftButton = 1
-buttonToInt G.MiddleButton = 2
-buttonToInt G.RightButton = 3
-buttonToInt G.WheelUp = 4
-buttonToInt G.WheelDown = 5
-buttonToInt (G.AdditionalButton n) = n
 
 undoField :: Field -> IO ()
 undoField f = do

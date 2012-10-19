@@ -9,7 +9,8 @@ module Graphics.UI.GLUT.Turtle.Console (
 
 import Graphics.UI.GLUT.Turtle.GLUTools(
 	KeyState(..), Modifiers,
-	createWindow, printCommands, keyboardCallback, displayAction)
+	createWindow, printCommands, keyboardCallback, displayAction,
+	separateLine)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Control.Applicative((<$>))
@@ -21,7 +22,7 @@ import Control.Concurrent.STM.TChan(
 
 data Console = Console{
 	cPrompt :: IORef String,
-	cCommand :: IORef [String],
+	cCommand :: IORef String,
 	cHistory :: IORef [String],
 	cChanged :: IORef Int,
 	cResult :: TChan String
@@ -31,7 +32,7 @@ openConsole :: String -> Int -> Int -> IO Console
 openConsole name w h = do
 	cwindow <- createWindow name w h
 	cprompt <- newIORef ""
-	ccommand <- newIORef [""]
+	ccommand <- newIORef ""
 	chistory <- newIORef []
 	cchanged <- newIORef 1
 	cresult <- atomically newTChan
@@ -42,12 +43,20 @@ openConsole name w h = do
 			cChanged = cchanged,
 			cResult = cresult }
 	keyboardCallback $ consoleKeyboard console
+	separateLine cwindow 1.0 jugemu >>= print
 	displayAction cchanged $ do
 		prmpt <- readIORef cprompt
 		cmd <- readIORef ccommand
 		hst <- readIORef chistory
-		printCommands cwindow 1.0 $ mergeToHistory prmpt cmd hst
+		ls <- concat . map reverse <$> mapM (separateLine cwindow 1.0) (
+			mergeToHistory prmpt cmd hst)
+		printCommands cwindow 1.0 ls
+--		printCommands cwindow 1.0 $ mergeToHistory prmpt cmd hst
+--		separateLine cwindow 1.0 jugemu >>= printCommands cwindow 1.0
 	return console
+
+jugemu = "jugemu jugemu gokounosurikire kaijarisuigyono suigyoumatsu unnraimatsu" ++
+	" fuuraimatsu kuunerutokorofisuwudjejgj yabugakoujinoburakouji "
 
 consolePrompt :: Console -> String -> IO ()
 consolePrompt c p = writeIORef (cPrompt c) p
@@ -61,19 +70,17 @@ consoleKeyboard console '\r' Down _ = do
 	prmpt <- readIORef $ cPrompt console
 	cmd <- readIORef $ cCommand console
 	atomicModifyIORef_ (cHistory console) $ mergeToHistory prmpt cmd
-	writeIORef (cCommand console) [""]
-	atomically $ writeTChan (cResult console) $ reverse $ concat cmd
+	writeIORef (cCommand console) ""
+	atomically $ writeTChan (cResult console) $ reverse cmd
 consoleKeyboard console '\b' Down _ = do
 	atomicModifyIORef_ (cChanged console) succ
 	atomicModifyIORef_ (cCommand console) $ \cmd -> case cmd of
-		[""] -> [""]
-		"" : (_ : l) : ls -> l : ls
-		(_ : l) : ls -> l : ls
-		_ -> error "bad"
+		"" -> ""
+		_ : cs -> cs
 consoleKeyboard console chr Down _ = do
 	atomicModifyIORef_ (cChanged console) succ
 	prmpt <- readIORef $ cPrompt console
-	atomicModifyIORef_ (cCommand console) $ \cmd -> addToTail prmpt cmd chr
+	atomicModifyIORef_ (cCommand console) $ \cmd -> chr : cmd
 consoleKeyboard _ _ _ _ = return ()
 
 consoleCommand :: Console -> IO (Maybe String)
@@ -91,7 +98,7 @@ addToTail _ stra@(str : strs) c
 	| length str < 50 = (c : str) : strs
 	| otherwise = [c] : stra
 
-mergeToHistory :: String -> [String] -> [String] -> [String]
-mergeToHistory _ [] _ = error "mergeToHistory: bad"
+mergeToHistory :: String -> String -> [String] -> [String]
+-- mergeToHistory _ [] _ = error "mergeToHistory: bad"
 mergeToHistory prmpt cstrs hst =
-	init (map reverse cstrs) ++ [prmpt ++ reverse (last cstrs)] ++ hst
+	[prmpt ++ reverse cstrs] ++ hst

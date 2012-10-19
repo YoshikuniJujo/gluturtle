@@ -6,6 +6,8 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	displayAction,
 	loop',
 
+	separateLine,
+
 	module Graphics.UI.GLUT
 ) where
 
@@ -37,6 +39,27 @@ printCommands win w strs = do
 	G.lineWidth $= fromRational (toRational w)
 	zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] strs
 	G.swapBuffers
+
+separateLine :: G.Window -> Double -> String -> IO [String]
+separateLine win size "" = return []
+separateLine win size str = do
+	G.currentWindow $= Just win
+	G.Size w h <- G.get G.windowSize
+	n <- getStringNum w (fromRational $ toRational size) str 1
+	rest <- separateLine win size (drop n str)
+	return $ take n str : rest
+
+getStringNum :: G.GLsizei -> G.GLfloat -> String -> Int -> IO Int
+getStringNum ws size str n
+	| n >= length str = return n
+	| otherwise = G.preservingMatrix $ do
+		G.lineWidth $= size
+		G.scale (0.0005 :: G.GLfloat) 0.0005 0.0005
+--		G.scale (0.999 :: G.GLfloat) 0.999 0.999
+		sw <- G.stringWidth G.Roman (take n str)
+		if sw < 3900
+--		if sw < 10 * fromIntegral ws
+			then getStringNum ws size str (n + 1) else return n
 
 printString :: G.GLfloat -> G.GLfloat -> String -> IO ()
 printString x y str =

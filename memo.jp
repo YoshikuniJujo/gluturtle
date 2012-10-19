@@ -288,3 +288,22 @@ fConsole :: IORef (Maybe Console) としてやってみようかな。
 
 cChan を、Chan ではなく IORef でやったほうがいいかもしれない。
 TChan を使うのもいいけど、STM 使うのは大袈裟かな。
+
+2012.10.19 Fri.
+
+Console.hs で、行分割をとりあえず 50 文字で決めうちにしてしまっているけれど、
+せっかく stringWidth があるので、それを使って、window の size に合わせた改行を
+するようにしたい。
+そうすると、cCommand は String にしたほうが良いだろう。
+cHistory は [String] のままだがその意味合いは変わる。
+わりと大きめの変更になるだろう。
+まずは cHistory や cString に保存されているデータを変更するところからだ。
+そのうえで、まずは、行分割する関数を GLUTools に作成し、
+Console.hs でそれを使用するようにする。
+そのあと、printCommands にそれを組み込んでしまおう。
+
+画面の大きさを入手する必要がある。
+printString や separateLines には Window 引数が必要になるだろう。
+currentWindow $= Just window
+Size w h <- get windowSize
+で何とかなるだろう。

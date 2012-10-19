@@ -62,17 +62,18 @@ consoleKeyboard console '\r' Down _ = do
 	cmd <- readIORef $ cCommand console
 	atomicModifyIORef_ (cHistory console) $ mergeToHistory prmpt cmd
 	writeIORef (cCommand console) [""]
-	atomically $ writeTChan (cResult console) $ concat cmd
+	atomically $ writeTChan (cResult console) $ reverse $ concat cmd
 consoleKeyboard console '\b' Down _ = do
 	atomicModifyIORef_ (cChanged console) succ
-	atomicModifyIORef_ (cCommand console) $ \s -> case (init s, last s) of
-		([], "") -> [""]
-		(i, "") -> init i ++ [init $ last i]
-		(i, l) -> i ++ [init l]
-consoleKeyboard c chr Down _ = do
-	pre <- readIORef $ cPrompt c
-	atomicModifyIORef_ (cChanged c) succ
-	atomicModifyIORef_ (cCommand c) $ \str -> addToTail pre str chr
+	atomicModifyIORef_ (cCommand console) $ \cmd -> case cmd of
+		[""] -> [""]
+		"" : (_ : l) : ls -> l : ls
+		(_ : l) : ls -> l : ls
+		_ -> error "bad"
+consoleKeyboard console chr Down _ = do
+	atomicModifyIORef_ (cChanged console) succ
+	prmpt <- readIORef $ cPrompt console
+	atomicModifyIORef_ (cCommand console) $ \cmd -> addToTail prmpt cmd chr
 consoleKeyboard _ _ _ _ = return ()
 
 consoleCommand :: Console -> IO (Maybe String)
@@ -84,12 +85,13 @@ consoleCommand console = atomically $ do
 addToTail :: String -> [String] -> Char -> [String]
 addToTail _ [] _ = error "bad"
 addToTail pre [str] c
-	| length (pre ++ str) < 50 = [str ++ [c]]
-	| otherwise = [str] ++ [[c]]
-addToTail _ strs c
-	| length (last strs) < 50 = init strs ++ [last strs ++ [c]]
-	| otherwise = strs ++ [[c]]
+	| length (pre ++ str) < 50 = [c : str]
+	| otherwise = [c] : [str]
+addToTail _ stra@(str : strs) c
+	| length str < 50 = (c : str) : strs
+	| otherwise = [c] : stra
 
 mergeToHistory :: String -> [String] -> [String] -> [String]
-mergeToHistory _ [] = error "mergeToHistory: bad"
-mergeToHistory prmpt (cstr : cstrs) = (reverse ((prmpt ++ cstr) : cstrs) ++)
+mergeToHistory _ [] _ = error "mergeToHistory: bad"
+mergeToHistory prmpt cstrs hst =
+	init (map reverse cstrs) ++ [prmpt ++ reverse (last cstrs)] ++ hst

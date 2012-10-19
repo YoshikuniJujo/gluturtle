@@ -153,7 +153,6 @@ newTurtle f = do
 	index <- newIORef 1; shapesRef <- newIORef shapeTable
 	chan <- newChan; hist <- getChanContents chan
 	let states = turtleSeries hist
---	_ <- addLayer f; c <- addCharacter f
 	thr <- forkField f $ zipWithM_ (moveTurtle f) states $ tail states
 	let t = Turtle {
 		field = f,
@@ -162,7 +161,6 @@ newTurtle f = do
 		shapes = shapesRef,
 		inputs = fmap (flip take hist . pred) $ readIORef index,
 		killTurtle = flushField f True $
---			clearLayer l >>
 			clearCharacter f >> killThread thr}
 	shape t "classic" >> input t (Undonum 0) >> return t
 

@@ -8,14 +8,18 @@ module Graphics.UI.GLUT.Turtle.Field(
 	-- * basic functions
 	initialize,
 	openField,
-	openConsole,
-	setConsole,
 	closeField,
 	topleft,
 	center,
 	coordinates,
 	fieldSize,
 	setFieldSize,
+
+	-- * about Console
+	openConsole,
+	setConsole,
+	consolePrompt,
+	consoleOutput,
 
 	-- * draw
 	forkField,
@@ -35,8 +39,6 @@ module Graphics.UI.GLUT.Turtle.Field(
 	drawCharacterAndLine,
 	clearCharacter,
 
-	consoleOutput,
-
 	-- * event driven
 	oninputtext,
 	onclick,
@@ -44,28 +46,24 @@ module Graphics.UI.GLUT.Turtle.Field(
 	ondrag,
 	onmotion,
 	onkeypress,
-	ontimer,
-
-	consolePrompt
+	ontimer
 ) where
 
-import Control.Monad
-
 import Graphics.UI.GLUT.Turtle.Triangles
-
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(
 	($=), initialize, createWindow, loop',
 	displayAction)
+import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
+	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
+
 import Text.XML.YJSVG(Position(..), Color(..))
 
+import Control.Monad
 import Control.Concurrent(ThreadId, forkIO)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Maybe
-
-import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
-	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
 
 --------------------------------------------------------------------------------
 

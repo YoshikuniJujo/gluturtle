@@ -3,21 +3,32 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	createWindow,
 	printCommands,
 	keyboardCallback,
+	keyboardMouseCallback,
 	displayAction,
-	loop',
+	loop,
+	windowColor,
 
+	currentWindow,
 --	separateLine,
+
+	windowSize,
+	setWindowSize,
+	leaveUnless,
 
 	module Graphics.UI.GLUT
 ) where
 
-import Graphics.UI.GLUT hiding (initialize, createWindow)
+import Graphics.UI.GLUT hiding (
+	initialize, createWindow, keyboardMouseCallback, currentWindow,
+	windowSize)
 import qualified Graphics.UI.GLUT as G
 import System.Environment
 import Control.Monad
 import Data.IORef
 import Data.IORef.Tools
 import Control.Applicative
+
+type Pos = Position
 
 initialize :: IO [String]
 initialize = do
@@ -77,14 +88,18 @@ keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m _ -> case k of
 	G.Char chr -> f chr ks m
 	_ -> return ())
 
+keyboardMouseCallback ::
+	(G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()) -> IO ()
+keyboardMouseCallback = (G.keyboardMouseCallback $=) . Just
+
 displayAction :: IORef Int -> IO () -> IO ()
-displayAction changed act = loop changed act >> G.displayCallback $= act
+displayAction changed act = loop_ changed act >> G.displayCallback $= act
 
-loop :: IORef Int -> IO a -> IO ()
-loop changed act = G.addTimerCallback 10 $ timerAction changed act
+loop_ :: IORef Int -> IO a -> IO ()
+loop_ changed act = G.addTimerCallback 10 $ timerAction changed act
 
-loop' :: IO a -> IO ()
-loop' act = G.addTimerCallback 10 $ timerAction' act
+loop :: IO a -> IO ()
+loop act = G.addTimerCallback 10 $ timerAction' act
 
 timerAction :: IORef Int -> IO a -> IO ()
 timerAction changed act = do
@@ -96,3 +111,26 @@ timerAction changed act = do
 
 timerAction' :: IO a -> IO ()
 timerAction' act = act >> G.addTimerCallback 10 (timerAction' act)
+
+windowColor :: G.Color4 G.GLfloat -> IO ()
+windowColor clr = G.preservingMatrix $ do
+	G.color clr
+	G.renderPrimitive G.Quads $ mapM_ G.vertex [
+		G.Vertex2 (-1) (-1),
+		G.Vertex2 (-1) 1,
+		G.Vertex2 1 1,
+		G.Vertex2 1 (-1) :: G.Vertex2 G.GLfloat ]
+
+currentWindow :: Window -> IO ()
+currentWindow = (G.currentWindow $=) . Just
+
+windowSize :: IO (Int, Int)
+windowSize = do
+	G.Size w h <- G.get G.windowSize
+	return (fromIntegral w, fromIntegral h)
+
+setWindowSize :: Int -> Int -> IO ()
+setWindowSize w h = (G.windowSize $=) $ Size (fromIntegral w) (fromIntegral h)
+
+leaveUnless :: Bool -> IO ()
+leaveUnless = flip unless G.leaveMainLoop

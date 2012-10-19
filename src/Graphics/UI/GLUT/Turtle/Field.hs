@@ -51,9 +51,12 @@ module Graphics.UI.GLUT.Turtle.Field(
 
 import Graphics.UI.GLUT.Turtle.Triangles
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
-import Graphics.UI.GLUT.Turtle.GLUTools(
-	($=), initialize, createWindow, loop',
-	displayAction)
+import Graphics.UI.GLUT.Turtle.GLUTools(windowColor,
+	($=), initialize, createWindow, loop,
+	displayAction, keyboardMouseCallback,
+	swapBuffers, currentWindow,
+	windowSize, setWindowSize, leaveUnless,
+	Key, KeyState, Modifiers)
 import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
 	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
 
@@ -70,7 +73,7 @@ import Data.Maybe
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
-	fFieldWindow :: G.Window,
+	fWindow :: G.Window,
 	fSize :: IORef (Int, Int),
 	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
@@ -99,75 +102,61 @@ openField name w h = do
 	foncommand <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
 
-	ffield <- createWindow name w h
-
-	let	act = do
-			G.currentWindow $= Just ffield
-			actwt
-		actwt = do
-			G.Size w' h' <- G.get G.windowSize
-			writeIORef fsize (fromIntegral w', fromIntegral h')
-			G.clearColor $= G.Color4 0 0 0 0
-			G.clear [G.ColorBuffer]
-			makeFieldColor . head =<< readIORef fbgcolor
-			sequence_ . reverse . catMaybes =<< readIORef factions
-			join $ readIORef faction
-			G.swapBuffers
-	displayAction fupdate act
-	G.reshapeCallback $= Just (\size -> G.viewport $= (G.Position 0 0, size))
+	fwindow <- createWindow name w h
 
 	fconsole <- newIORef Nothing
-	let f = Field{
-		fConsole = fconsole,
+	let	field = Field{
+			fConsole = fconsole,
 
-		fFieldWindow = ffield,
-		fSize = fsize,
-		fCoordinates = fcoord,
-		fBgcolor = fbgcolor,
+			fWindow = fwindow,
+			fSize = fsize,
+			fCoordinates = fcoord,
+			fBgcolor = fbgcolor,
 
-		fAction = faction,
-		fActions = factions,
+			fAction = faction,
+			fActions = factions,
 
-		fUpdate = fupdate,
+			fUpdate = fupdate,
 
-		fOncommand = foncommand,
-		fOnclick = fclick
-	 }
-	G.keyboardMouseCallback $= Just (processKeyboardMouse f)
-
-	return f
+			fOncommand = foncommand,
+			fOnclick = fclick }
+	keyboardMouseCallback $ processKeyboardMouse field
+	displayAction fupdate $ do
+		currentWindow fwindow
+		writeIORef fsize =<< windowSize
+		windowColor . colorToColor4 . head =<< readIORef fbgcolor
+		sequence_ . reverse . catMaybes =<< readIORef factions
+		join $ readIORef faction
+		swapBuffers
+	return field
 
 setConsole :: Field -> Console -> IO ()
-setConsole f console = do
-	loop' $ do
-		mcmd <- consoleCommand console
-		case mcmd of
-			Just cmd -> do
-				continue <- readIORef (fOncommand f) >>= ($ cmd)
-				unless continue G.leaveMainLoop
-			_ -> return ()
-	writeIORef (fConsole f) $ Just console
+setConsole f c = (writeIORef (fConsole f) (Just c) >>) $ loop $ do
+	mcmd <- consoleCommand c
+	case mcmd of
+		Just cmd -> readIORef (fOncommand f) >>= ($ cmd) >>= leaveUnless
+		_ -> return ()
 
-processKeyboardMouse :: Field -> G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()
-processKeyboardMouse f (G.Char c) ks m _ = do
-	mc <- readIORef $ fConsole f
+processKeyboardMouse :: Field -> Key -> KeyState -> Modifiers -> G.Position -> IO ()
+processKeyboardMouse field (G.Char c) ks m _ = do
+	mc <- readIORef $ fConsole field
 	case mc of
 		Just con -> do
 			consoleKeyboard con c ks m
-			atomicModifyIORef_ (fUpdate f) (+ 1)
+			atomicModifyIORef_ (fUpdate field) (+ 1)
 		Nothing -> return ()
-processKeyboardMouse f (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
-	coord <- readIORef (fCoordinates f)
+processKeyboardMouse field (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
+	coord <- readIORef (fCoordinates field)
 	continue <- case coord of
 		CoordCenter -> do
-			(w, h) <- fieldSize f
+			(w, h) <- fieldSize field
 			let	x = fromIntegral x_ - (w / 2)
 				y = (h / 2) - fromIntegral y_
-			readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
+			readIORef (fOnclick field) >>= (\fun -> fun (buttonToInt mb) x y)
 		CoordTopLeft -> do
 			let	(x, y) = (fromIntegral x_, fromIntegral y_)
-			readIORef (fOnclick f) >>= (\fun -> fun (buttonToInt mb) x y)
-	unless continue G.leaveMainLoop
+			readIORef (fOnclick field) >>= (\fun -> fun (buttonToInt mb) x y)
+	leaveUnless continue
 processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
 processKeyboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
 
@@ -186,7 +175,7 @@ undoField f = do
 	atomicModifyIORef_ (fActions f) tail
 
 closeField :: Field -> IO ()
-closeField _ = G.leaveMainLoop
+closeField _ = return () -- G.leaveMainLoop
 
 topleft, center :: Field -> IO ()
 topleft = flip writeIORef CoordTopLeft . fCoordinates
@@ -213,15 +202,6 @@ fieldColor f clr = do
 	atomicModifyIORef_ (fBgcolor f) (clr :)
 	atomicModifyIORef_ (fActions f) (Nothing :)
 
-makeFieldColor :: Color -> IO ()
-makeFieldColor clr = G.preservingMatrix $ do
-	G.color $ colorToColor4 clr
-	G.renderPrimitive G.Quads $ mapM_ G.vertex [
-		G.Vertex2 (-1) (-1),
-		G.Vertex2 (-1) 1,
-		G.Vertex2 1 1,
-		G.Vertex2 1 (-1) :: G.Vertex2 G.GLfloat ]
-
 --------------------------------------------------------------------------------
 
 setFieldSize :: Field -> Double -> Double -> IO ()
@@ -229,8 +209,8 @@ setFieldSize f w_ h_ = do
 	let	w = round w_
 		h = round h_
 	writeIORef (fSize f) (w, h)
-	G.currentWindow $= Just (fFieldWindow f)
-	G.windowSize $= G.Size (fromIntegral w) (fromIntegral h)
+	currentWindow $ fWindow f
+	setWindowSize w h
 
 drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do

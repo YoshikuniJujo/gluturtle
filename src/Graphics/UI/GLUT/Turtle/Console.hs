@@ -34,20 +34,20 @@ openConsole name w h = do
 	ccommand <- newIORef [""]
 	chistory <- newIORef []
 	cchanged <- newIORef 1
-	cchan <- atomically newTChan
-	let	c = Console{
+	cresult <- atomically newTChan
+	let	console = Console{
 			cPrompt = cprompt,
 			cCommand = ccommand,
 			cHistory = chistory,
 			cChanged = cchanged,
-			cResult = cchan }
-	keyboardCallback $ consoleKeyboard c
+			cResult = cresult }
+	keyboardCallback $ consoleKeyboard console
 	displayAction cchanged $ do
 		prmpt <- readIORef cprompt
 		cmd <- readIORef ccommand
 		hst <- readIORef chistory
 		printCommands cwindow 1.0 $ mergeToHistory prmpt cmd hst
-	return c
+	return console
 
 consolePrompt :: Console -> String -> IO ()
 consolePrompt c p = writeIORef (cPrompt c) p

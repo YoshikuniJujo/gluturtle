@@ -16,6 +16,7 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	leaveUnless,
 
 	Key(..),
+	glDrawLine,
 
 	module Graphics.UI.GLUT
 ) where
@@ -154,3 +155,10 @@ setWindowSize w h = (G.windowSize $=) $ Size (fromIntegral w) (fromIntegral h)
 
 leaveUnless :: Bool -> IO ()
 leaveUnless = flip unless G.leaveMainLoop
+
+glDrawLine :: G.Color4 G.GLfloat -> G.GLfloat ->
+	G.Vertex3 G.GLfloat -> G.Vertex3 G.GLfloat -> IO ()
+glDrawLine c w p q = G.preservingMatrix $ do
+	G.lineWidth $= w
+	G.color c
+	G.renderPrimitive G.Lines $ mapM_ G.vertex [p, q]

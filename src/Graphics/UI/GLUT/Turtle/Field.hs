@@ -55,7 +55,7 @@ import Graphics.UI.GLUT.Turtle.GLUTools(windowColor,
 	($=), initialize, createWindow, loop,
 	displayAction, keyboardMouseCallback,
 	swapBuffers, currentWindow,
-	windowSize, setWindowSize, leaveUnless,
+	windowSize, setWindowSize, leaveUnless, glDrawLine,
 	Key(..), KeyState(..), Modifiers)
 import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
 	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
@@ -144,19 +144,16 @@ procKboardMouse field (G.MouseButton mb) Down _ (x_, y_) = do
 	coord <- readIORef (fCoordinates field)
 	continue <- case coord of
 		CoordCenter -> do
-			(x, y) <- toCenter field x_ y_
-			readIORef (fOnclick field) >>=
-				(\fun -> fun mb x y)
-		CoordTopLeft -> readIORef (fOnclick field) >>=
-			(\fun -> fun mb x_ y_)
+			(x, y) <- toCenter x_ y_
+			readIORef (fOnclick field) >>= (\f -> f mb x y)
+		CoordTopLeft -> readIORef (fOnclick field) >>= (\f -> f mb x_ y_)
 	leaveUnless continue
+	where
+	toCenter x y = do
+		(w, h) <- fieldSize field
+		return (x - w / 2, h / 2 - y)
 procKboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
 procKboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
-
-toCenter :: Field -> Double -> Double -> IO Pos
-toCenter field x y = do
-	(w, h) <- fieldSize field
-	return (x - w / 2, h / 2 - y)
 
 undoField :: Field -> IO ()
 undoField f = do
@@ -206,15 +203,12 @@ drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 	atomicModifyIORef_ (fUpdate f) (+ 1)
-	G.flush
 
 makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
-makeLineAction f p q c w = G.preservingMatrix $ do
-	G.lineWidth $= fromRational (toRational w)
-	G.color $ colorToColor4 c
+makeLineAction f p q c w = do
 	pp <- positionToVertex3 f p
 	qq <- positionToVertex3 f q
-	G.renderPrimitive G.Lines $ mapM_ G.vertex [pp, qq]
+	glDrawLine (colorToColor4 c) (fromRational $ toRational w) pp qq
 
 colorToColor4 :: Color -> G.Color4 G.GLfloat
 colorToColor4 (RGB r g b) = G.Color4
@@ -248,17 +242,18 @@ positionToPos f (TopLeft x y) = do
 posToPosition :: Pos -> Position
 posToPosition (x, y) = Center x y
 
-positionToVertex3 :: Field -> Position -> IO (G.Vertex2 G.GLfloat)
+positionToVertex3 :: Field -> Position -> IO (G.Vertex3 G.GLfloat)
 positionToVertex3 f (Center x y) = do
 	(w, h) <- readIORef $ fSize f
-	return $ G.Vertex2
+	return $ G.Vertex3
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)
+		0
 positionToVertex3 f (TopLeft x y) = do
 	(w, h) <- readIORef $ fSize f
 	let	x' = 2 * toRational x / fromIntegral w - 1
 		y' = 1 - 2 * toRational y / fromIntegral h
-	return $ G.Vertex2 (fromRational x') (fromRational y')
+	return $ G.Vertex3 (fromRational x') (fromRational y') 0
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()

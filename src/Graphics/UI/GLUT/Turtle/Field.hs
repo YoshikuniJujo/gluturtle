@@ -56,7 +56,7 @@ import Graphics.UI.GLUT.Turtle.GLUTools(windowColor,
 	displayAction, keyboardMouseCallback,
 	swapBuffers, currentWindow,
 	windowSize, setWindowSize, leaveUnless,
-	Key, KeyState, Modifiers)
+	Key(..), KeyState(..), Modifiers)
 import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
 	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
 
@@ -120,7 +120,7 @@ openField name w h = do
 
 			fOncommand = foncommand,
 			fOnclick = fclick }
-	keyboardMouseCallback $ processKeyboardMouse field
+	keyboardMouseCallback $ procKboardMouse field
 	displayAction fupdate $ do
 		currentWindow fwindow
 		writeIORef fsize =<< windowSize
@@ -137,28 +137,26 @@ setConsole f c = (writeIORef (fConsole f) (Just c) >>) $ loop $ do
 		Just cmd -> readIORef (fOncommand f) >>= ($ cmd) >>= leaveUnless
 		_ -> return ()
 
-processKeyboardMouse :: Field -> Key -> KeyState -> Modifiers -> G.Position -> IO ()
-processKeyboardMouse field (G.Char c) ks m _ = do
-	mc <- readIORef $ fConsole field
-	case mc of
-		Just con -> do
-			consoleKeyboard con c ks m
-			atomicModifyIORef_ (fUpdate field) (+ 1)
-		Nothing -> return ()
-processKeyboardMouse field (G.MouseButton mb) G.Down _m (G.Position x_ y_) = do
+procKboardMouse :: Field -> Key -> KeyState -> Modifiers -> Pos -> IO ()
+procKboardMouse Field{fConsole = con} (Char chr) ks m _ = readIORef con >>=
+	maybe (return ()) (\c -> consoleKeyboard c chr ks m)
+procKboardMouse field (G.MouseButton mb) Down _ (x_, y_) = do
 	coord <- readIORef (fCoordinates field)
 	continue <- case coord of
 		CoordCenter -> do
-			(w, h) <- fieldSize field
-			let	x = fromIntegral x_ - (w / 2)
-				y = (h / 2) - fromIntegral y_
-			readIORef (fOnclick field) >>= (\fun -> fun (buttonToInt mb) x y)
-		CoordTopLeft -> do
-			let	(x, y) = (fromIntegral x_, fromIntegral y_)
-			readIORef (fOnclick field) >>= (\fun -> fun (buttonToInt mb) x y)
+			(x, y) <- toCenter field x_ y_
+			readIORef (fOnclick field) >>=
+				(\fun -> fun (buttonToInt mb) x y)
+		CoordTopLeft -> readIORef (fOnclick field) >>=
+			(\fun -> fun (buttonToInt mb) x_ y_)
 	leaveUnless continue
-processKeyboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
-processKeyboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
+procKboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
+procKboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
+
+toCenter :: Field -> Double -> Double -> IO Pos
+toCenter field x y = do
+	(w, h) <- fieldSize field
+	return (x - w / 2, h / 2 - y)
 
 buttonToInt :: G.MouseButton -> Int
 buttonToInt G.LeftButton = 1

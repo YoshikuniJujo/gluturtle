@@ -89,8 +89,9 @@ keyboardCallback f = G.keyboardMouseCallback $= Just (\k ks m _ -> case k of
 	_ -> return ())
 
 keyboardMouseCallback ::
-	(G.Key -> G.KeyState -> G.Modifiers -> G.Position -> IO ()) -> IO ()
-keyboardMouseCallback = (G.keyboardMouseCallback $=) . Just
+	(G.Key -> G.KeyState -> G.Modifiers -> (Double, Double) -> IO ()) -> IO ()
+keyboardMouseCallback fun = (G.keyboardMouseCallback $=) $ Just $
+	\k ks m (Position x y) ->fun k ks m (fromIntegral x, fromIntegral y)
 
 displayAction :: IORef Int -> IO () -> IO ()
 displayAction changed act = loop_ changed act >> G.displayCallback $= act

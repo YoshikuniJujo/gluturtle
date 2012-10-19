@@ -9,8 +9,7 @@ module Graphics.UI.GLUT.Turtle.Console (
 
 import Graphics.UI.GLUT.Turtle.GLUTools(
 	KeyState(..), Modifiers,
-	createWindow, printCommands, keyboardCallback, displayAction,
-	separateLine)
+	createWindow, printCommands, keyboardCallback, displayAction)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Control.Applicative((<$>))
@@ -43,20 +42,12 @@ openConsole name w h = do
 			cChanged = cchanged,
 			cResult = cresult }
 	keyboardCallback $ consoleKeyboard console
-	separateLine cwindow 1.0 jugemu >>= print
 	displayAction cchanged $ do
 		prmpt <- readIORef cprompt
 		cmd <- readIORef ccommand
 		hst <- readIORef chistory
-		ls <- concat . map reverse <$> mapM (separateLine cwindow 1.0) (
-			mergeToHistory prmpt cmd hst)
-		printCommands cwindow 1.0 ls
---		printCommands cwindow 1.0 $ mergeToHistory prmpt cmd hst
---		separateLine cwindow 1.0 jugemu >>= printCommands cwindow 1.0
+		printCommands cwindow 1.0 $ mergeToHistory prmpt cmd hst
 	return console
-
-jugemu = "jugemu jugemu gokounosurikire kaijarisuigyono suigyoumatsu unnraimatsu" ++
-	" fuuraimatsu kuunerutokorofisuwudjejgj yabugakoujinoburakouji "
 
 consolePrompt :: Console -> String -> IO ()
 consolePrompt c p = writeIORef (cPrompt c) p
@@ -79,7 +70,6 @@ consoleKeyboard console '\b' Down _ = do
 		_ : cs -> cs
 consoleKeyboard console chr Down _ = do
 	atomicModifyIORef_ (cChanged console) succ
-	prmpt <- readIORef $ cPrompt console
 	atomicModifyIORef_ (cCommand console) $ \cmd -> chr : cmd
 consoleKeyboard _ _ _ _ = return ()
 
@@ -89,16 +79,5 @@ consoleCommand console = atomically $ do
 	if emp then return Nothing else
 		Just <$> readTChan (cResult console)
 
-addToTail :: String -> [String] -> Char -> [String]
-addToTail _ [] _ = error "bad"
-addToTail pre [str] c
-	| length (pre ++ str) < 50 = [c : str]
-	| otherwise = [c] : [str]
-addToTail _ stra@(str : strs) c
-	| length str < 50 = (c : str) : strs
-	| otherwise = [c] : stra
-
 mergeToHistory :: String -> String -> [String] -> [String]
--- mergeToHistory _ [] _ = error "mergeToHistory: bad"
-mergeToHistory prmpt cstrs hst =
-	[prmpt ++ reverse cstrs] ++ hst
+mergeToHistory prmpt cstrs hst = [prmpt ++ reverse cstrs] ++ hst

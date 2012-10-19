@@ -6,7 +6,7 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	displayAction,
 	loop',
 
-	separateLine,
+--	separateLine,
 
 	module Graphics.UI.GLUT
 ) where
@@ -17,6 +17,7 @@ import System.Environment
 import Control.Monad
 import Data.IORef
 import Data.IORef.Tools
+import Control.Applicative
 
 initialize :: IO [String]
 initialize = do
@@ -32,7 +33,11 @@ createWindow name w h = do
 	G.createWindow name
 
 printCommands :: G.Window -> Double -> [String] -> IO ()
-printCommands win w strs = do
+printCommands win d strs =
+	concat . map reverse <$> mapM separateLine strs >>= printCommands_ win d
+
+printCommands_ :: G.Window -> Double -> [String] -> IO ()
+printCommands_ win w strs = do
 	G.currentWindow $= Just win
 	G.clearColor $= G.Color4 0 0 0 0
 	G.clear [G.ColorBuffer]
@@ -40,26 +45,20 @@ printCommands win w strs = do
 	zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] strs
 	G.swapBuffers
 
-separateLine :: G.Window -> Double -> String -> IO [String]
-separateLine win size "" = return []
-separateLine win size str = do
-	G.currentWindow $= Just win
-	G.Size w h <- G.get G.windowSize
-	n <- getStringNum w (fromRational $ toRational size) str 1
-	rest <- separateLine win size (drop n str)
+separateLine :: String -> IO [String]
+separateLine "" = return []
+separateLine str = do
+	n <- getStringNum str 1
+	rest <- separateLine (drop n str)
 	return $ take n str : rest
 
-getStringNum :: G.GLsizei -> G.GLfloat -> String -> Int -> IO Int
-getStringNum ws size str n
+getStringNum :: String -> Int -> IO Int
+getStringNum str n
 	| n >= length str = return n
 	| otherwise = G.preservingMatrix $ do
-		G.lineWidth $= size
-		G.scale (0.0005 :: G.GLfloat) 0.0005 0.0005
---		G.scale (0.999 :: G.GLfloat) 0.999 0.999
 		sw <- G.stringWidth G.Roman (take n str)
 		if sw < 3900
---		if sw < 10 * fromIntegral ws
-			then getStringNum ws size str (n + 1) else return n
+			then getStringNum str (n + 1) else return n
 
 printString :: G.GLfloat -> G.GLfloat -> String -> IO ()
 printString x y str =

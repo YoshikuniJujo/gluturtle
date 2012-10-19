@@ -32,16 +32,16 @@ createWindow name w h = do
 	initialWindowSize $= Size (fromIntegral w) (fromIntegral h)
 	G.createWindow name
 
-printCommands :: G.Window -> Double -> [String] -> IO ()
-printCommands win d strs =
-	concat . map reverse <$> mapM separateLine strs >>= printCommands_ win d
+printCommands :: G.Window -> [String] -> IO ()
+printCommands win strs =
+	concatMap reverse <$> mapM separateLine strs >>= printCommands_ win
 
-printCommands_ :: G.Window -> Double -> [String] -> IO ()
-printCommands_ win w strs = do
+printCommands_ :: G.Window -> [String] -> IO ()
+printCommands_ win strs = do
 	G.currentWindow $= Just win
 	G.clearColor $= G.Color4 0 0 0 0
 	G.clear [G.ColorBuffer]
-	G.lineWidth $= fromRational (toRational w)
+	G.lineWidth $= 1.0
 	zipWithM_ (printString (-2.8)) [-1800, -1600 .. 1800] strs
 	G.swapBuffers
 

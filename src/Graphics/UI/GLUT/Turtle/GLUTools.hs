@@ -17,9 +17,12 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 
 	Key(..),
 	glDrawLine,
+	drawPolygon,
 
 	module Graphics.UI.GLUT
 ) where
+
+import Graphics.UI.GLUT.Turtle.Triangles
 
 import Graphics.UI.GLUT hiding (
 	initialize, createWindow, keyboardMouseCallback, currentWindow,
@@ -162,3 +165,29 @@ glDrawLine c w p q = G.preservingMatrix $ do
 	G.lineWidth $= w
 	G.color c
 	G.renderPrimitive G.Lines $ mapM_ G.vertex [p, q]
+
+drawPolygon :: [G.Vertex3 G.GLfloat] -> G.Color4 G.GLfloat -> G.Color4 G.GLfloat ->
+	G.GLfloat -> IO ()
+drawPolygon ps c lc lw = G.preservingMatrix $ do
+	G.color c
+	G.renderPrimitive G.Triangles $ mapM_ G.vertex ps'
+	G.lineWidth $= lw
+	G.color lc
+	G.renderPrimitive G.LineLoop $ mapM_ G.vertex ps
+	where
+	ps' = map posToVertex3 $ triangleToPositions $ toTriangles $
+		map vertex3ToPos ps
+
+vertex3ToPos :: G.Vertex3 G.GLfloat -> Pos
+vertex3ToPos (G.Vertex3 x y 0) =
+	(fromRational $ toRational x, fromRational $ toRational y)
+vertex3ToPos _ = error "vertex3ToPos: bad"
+
+posToVertex3 :: Pos -> G.Vertex3 G.GLfloat
+posToVertex3 (x, y) =
+	G.Vertex3 (fromRational $ toRational x) (fromRational $ toRational y) 0
+
+type Pos = (Double, Double)
+triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
+triangleToPositions [] = []
+triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest

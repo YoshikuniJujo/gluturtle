@@ -311,3 +311,14 @@ Size w h <- get windowSize
 次は keyboardMouseCallback を改良して、Key の Mouse の種類を
 Int とできるようにする。
 つまり、Key の上書きが必要だ。
+
+2012.10.20 Sat.
+
+次は makeCharacterAction の G. ... の部分を GLUTools.hs へ移動させる。
+
+toTriangles を使う部分も、GLUTools.hs に移そう。
+
+drawPolygon は、Vertex3 を取るほうがきれいだが、
+今の実装のままそれをすると、無駄な変換が起きる。
+けど、おそらく性能への影響はわずかであるし、
+本質的に正しい実装に変えた場合には無駄はなくなるようにも思う。

@@ -49,14 +49,13 @@ module Graphics.UI.GLUT.Turtle.Field(
 	ontimer
 ) where
 
-import Graphics.UI.GLUT.Turtle.Triangles
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(windowColor,
 	($=), initialize, createWindow, loop,
 	displayAction, keyboardMouseCallback,
 	swapBuffers, currentWindow,
 	windowSize, setWindowSize, leaveUnless, glDrawLine,
-	Key(..), KeyState(..), Modifiers)
+	Key(..), KeyState(..), Modifiers, drawPolygon)
 import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
 	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
 
@@ -137,6 +136,7 @@ setConsole f c = (writeIORef (fConsole f) (Just c) >>) $ loop $ do
 		Just cmd -> readIORef (fOncommand f) >>= ($ cmd) >>= leaveUnless
 		_ -> return ()
 
+type Pos = (Double, Double)
 procKboardMouse :: Field -> Key -> KeyState -> Modifiers -> Pos -> IO ()
 procKboardMouse Field{fConsole = con} (Char chr) ks m _ = readIORef con >>=
 	maybe (return ()) (\c -> consoleKeyboard c chr ks m)
@@ -217,30 +217,11 @@ colorToColor4 _ = error "colorToColor4: not implemented"
 
 makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makeCharacterAction f ps c lc lw = do
-	ps' <- mapM (positionToPos f) ps
-	vs <- mapM (positionToVertex3 f . posToPosition) $
-		triangleToPositions $ toTriangles ps'
 	vs' <- mapM (positionToVertex3 f) ps
-	G.preservingMatrix $ do
-		G.color $ colorToColor4 c
-		G.renderPrimitive G.Triangles $ mapM_ G.vertex vs
-		G.lineWidth $= fromRational (toRational lw)
-		G.color $ colorToColor4 lc
-		G.renderPrimitive G.LineLoop $ mapM_ G.vertex vs'
-
-type Pos = (Double, Double)
-triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
-triangleToPositions [] = []
-triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
-
-positionToPos :: Field -> Position -> IO Pos
-positionToPos _ (Center x y) = return (x, y)
-positionToPos f (TopLeft x y) = do
-	(w, h) <- fieldSize f
-	return (x - w / 2, h / 2 - y)
-
-posToPosition :: Pos -> Position
-posToPosition (x, y) = Center x y
+	let	c' = colorToColor4 c
+		lc' = colorToColor4 lc
+		lw' = fromRational $ toRational lw
+	drawPolygon vs' c' lc' lw'
 
 positionToVertex3 :: Field -> Position -> IO (G.Vertex3 G.GLfloat)
 positionToVertex3 f (Center x y) = do

@@ -49,11 +49,10 @@ module Graphics.UI.GLUT.Turtle.Field(
 	ontimer
 ) where
 
-import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
 import Graphics.UI.GLUT.Turtle.GLUTools(windowColor, glWriteString,
-	initialize, createWindow, loop,
-	displayAction, keyboardMouseCallback,
-	swapBuffers, currentWindow,
+	initialize, createWindow, loop, KeyState(..), Vertex3(..),
+	displayAction, keyboardMouseCallback, Color4(..), GLfloat,
+	swapBuffers, currentWindow, Window, Key(..),
 	windowSize, setWindowSize, leaveUnless, glDrawLine,
 	Key(..), KeyState(..), Modifiers, drawPolygon)
 import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
@@ -72,7 +71,7 @@ import Data.Maybe
 data Coordinates = CoordTopLeft | CoordCenter
 
 data Field = Field{
-	fWindow :: G.Window,
+	fWindow :: Window,
 	fSize :: IORef (Int, Int),
 	fCoordinates :: IORef Coordinates,
 	fBgcolor :: IORef [Color],
@@ -136,11 +135,11 @@ setConsole f c = (writeIORef (fConsole f) (Just c) >>) $ loop $ do
 		Just cmd -> readIORef (fOncommand f) >>= ($ cmd) >>= leaveUnless
 		_ -> return ()
 
-type Pos = (Double, Double)
-procKboardMouse :: Field -> Key -> KeyState -> Modifiers -> Pos -> IO ()
+procKboardMouse ::
+	Field -> Key -> KeyState -> Modifiers -> (Double, Double) -> IO ()
 procKboardMouse Field{fConsole = con} (Char chr) ks m _ = readIORef con >>=
 	maybe (return ()) (\c -> consoleKeyboard c chr ks m)
-procKboardMouse field (G.MouseButton mb) Down _ (x_, y_) = do
+procKboardMouse field (MouseButton mb) Down _ (x_, y_) = do
 	coord <- readIORef (fCoordinates field)
 	continue <- case coord of
 		CoordCenter -> do
@@ -152,8 +151,8 @@ procKboardMouse field (G.MouseButton mb) Down _ (x_, y_) = do
 	toCenter x y = do
 		(w, h) <- fieldSize field
 		return (x - w / 2, h / 2 - y)
-procKboardMouse _f (G.MouseButton _mb) G.Up _m _p = return ()
-procKboardMouse _f (G.SpecialKey _sk) _ks _m _p = return ()
+procKboardMouse _f (MouseButton _mb) Up _m _p = return ()
+procKboardMouse _f (SpecialKey _sk) _ks _m _p = return ()
 
 undoField :: Field -> IO ()
 undoField f = do
@@ -210,8 +209,8 @@ makeLineAction f p q c w = do
 	qq <- positionToVertex3 f q
 	glDrawLine (colorToColor4 c) (fromRational $ toRational w) pp qq
 
-colorToColor4 :: Color -> G.Color4 G.GLfloat
-colorToColor4 (RGB r g b) = G.Color4
+colorToColor4 :: Color -> Color4 GLfloat
+colorToColor4 (RGB r g b) = Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
 
@@ -223,10 +222,10 @@ makeCharacterAction f ps c lc lw = do
 		lw' = fromRational $ toRational lw
 	drawPolygon vs' c' lc' lw'
 
-positionToVertex3 :: Field -> Position -> IO (G.Vertex3 G.GLfloat)
+positionToVertex3 :: Field -> Position -> IO (Vertex3 GLfloat)
 positionToVertex3 f (Center x y) = do
 	(w, h) <- readIORef $ fSize f
-	return $ G.Vertex3
+	return $ Vertex3
 		(fromRational $ 2 * toRational x / fromIntegral w)
 		(fromRational $ 2 * toRational y / fromIntegral h)
 		0
@@ -234,7 +233,7 @@ positionToVertex3 f (TopLeft x y) = do
 	(w, h) <- readIORef $ fSize f
 	let	x' = 2 * toRational x / fromIntegral w - 1
 		y' = 1 - 2 * toRational y / fromIntegral h
-	return $ G.Vertex3 (fromRational x') (fromRational y') 0
+	return $ Vertex3 (fromRational x') (fromRational y') 0
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()

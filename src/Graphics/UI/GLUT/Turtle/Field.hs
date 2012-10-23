@@ -64,7 +64,7 @@ import Text.XML.YJSVG(Position(..), Color(..))
 import Control.Monad(when, join)
 import Control.Concurrent(ThreadId, forkIO)
 import Data.Maybe(isNothing, catMaybes)
-import Data.IORef(IORef, newIORef, readIORef, writeIORef)
+import Data.IORef(IORef, newIORef, readIORef, writeIORef, atomicModifyIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 
 --------------------------------------------------------------------------------
@@ -93,30 +93,22 @@ openField name w h = do
 	fsize <- newIORef (w, h)
 	fcoord <- newIORef CoordCenter
 	fbgcolor <- newIORef [RGB 255 255 255]
-
 	faction <- newIORef $ return ()
 	factions <- newIORef []
-
 	fupdate <- newIORef 0
 	foncommand <- newIORef $ const $ return True
 	fclick <- newIORef (\_ _ _ -> return True)
-
 	fwindow <- createWindow name w h
-
 	fconsole <- newIORef Nothing
 	let	field = Field{
 			fConsole = fconsole,
-
 			fWindow = fwindow,
 			fSize = fsize,
 			fCoordinates = fcoord,
 			fBgcolor = fbgcolor,
-
 			fAction = faction,
 			fActions = factions,
-
 			fUpdate = fupdate,
-
 			fOncommand = foncommand,
 			fOnclick = fclick }
 	keyboardMouseCallback $ procKboardMouse field
@@ -140,26 +132,22 @@ procKboardMouse ::
 	Field -> Key -> KeyState -> Modifiers -> (Double, Double) -> IO ()
 procKboardMouse Field{fConsole = con} (Char chr) ks m _ = readIORef con >>=
 	maybe (return ()) (\c -> consoleKeyboard c chr ks m)
-procKboardMouse field (MouseButton mb) Down _ (x_, y_) = do
-	coord <- readIORef (fCoordinates field)
+procKboardMouse field (MouseButton mb) Down _ (x, y) = do
+	coord <- readIORef $ fCoordinates field
+	fun <- readIORef $ fOnclick field
 	continue <- case coord of
 		CoordCenter -> do
-			(x, y) <- toCenter x_ y_
-			readIORef (fOnclick field) >>= (\f -> f mb x y)
-		CoordTopLeft -> readIORef (fOnclick field) >>= (\f -> f mb x_ y_)
+			(w, h) <- fieldSize field
+			fun mb (x - w / 2) (h / 2 - y)
+		CoordTopLeft -> fun mb x y
 	leaveUnless continue
-	where
-	toCenter x y = do
-		(w, h) <- fieldSize field
-		return (x - w / 2, h / 2 - y)
 procKboardMouse _f (MouseButton _mb) Up _m _p = return ()
 procKboardMouse _f (SpecialKey _sk) _ks _m _p = return ()
 
 undoField :: Field -> IO ()
 undoField f = do
-	a : _ <- readIORef $ fActions f
-	when (isNothing a) $ atomicModifyIORef_ (fBgcolor f) tail
-	atomicModifyIORef_ (fActions f) tail
+	ret <- atomicModifyIORef (fActions f) (\(h : t) -> (t, h))
+	when (isNothing ret) $ atomicModifyIORef_ (fBgcolor f) tail
 
 closeField :: Field -> IO ()
 closeField _ = return ()

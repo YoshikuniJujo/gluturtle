@@ -49,22 +49,23 @@ module Graphics.UI.GLUT.Turtle.Field(
 	ontimer
 ) where
 
-import Graphics.UI.GLUT.Turtle.GLUTools(windowColor, glWriteString,
-	initialize, createWindow, loop, KeyState(..), Vertex3(..),
-	displayAction, keyboardMouseCallback, Color4(..), GLfloat,
-	swapBuffers, currentWindow, Window, Key(..),
-	windowSize, setWindowSize, leaveUnless, glDrawLine,
-	Key(..), KeyState(..), Modifiers, drawPolygon)
-import Graphics.UI.GLUT.Turtle.Console(consoleCommand,
-	Console, consoleKeyboard, openConsole, consoleOutput, consolePrompt)
-
+import Graphics.UI.GLUT.Turtle.Console(
+	Console, openConsole, consolePrompt, consoleOutput,
+	consoleKeyboard, consoleCommand)
+import Graphics.UI.GLUT.Turtle.GLUTools(
+	Window, Key(..), KeyState(..), Modifiers, Vertex3(..), Color4(..),
+	GLfloat,
+	initialize, createWindow, loop, displayAction, keyboardMouseCallback,
+	currentWindow, swapBuffers, leaveUnless,
+	windowColor, windowSize, setWindowSize,
+	glDrawLine, drawPolygon, glWriteString)
 import Text.XML.YJSVG(Position(..), Color(..))
 
-import Control.Monad
+import Control.Monad(when, join)
 import Control.Concurrent(ThreadId, forkIO)
+import Data.Maybe(isNothing, catMaybes)
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
-import Data.Maybe
 
 --------------------------------------------------------------------------------
 

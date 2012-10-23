@@ -18,6 +18,7 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 	Key(..),
 	glDrawLine,
 	drawPolygon,
+	glWriteString,
 
 	module Graphics.UI.GLUT
 ) where
@@ -191,3 +192,11 @@ type Pos = (Double, Double)
 triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
 triangleToPositions [] = []
 triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
+
+glWriteString ::
+	G.GLfloat -> G.Color4 G.GLfloat -> G.GLfloat -> G.GLfloat -> String -> IO ()
+glWriteString s clr x y str = G.preservingMatrix $ do
+	G.color clr
+	G.scale (s :: G.GLfloat) (s :: G.GLfloat) (s :: G.GLfloat)
+	G.translate (G.Vector3 x y 0 :: G.Vector3 G.GLfloat)
+	G.renderString G.Roman str

@@ -50,8 +50,8 @@ module Graphics.UI.GLUT.Turtle.Field(
 ) where
 
 import qualified Graphics.UI.GLUT.Turtle.GLUTools as G
-import Graphics.UI.GLUT.Turtle.GLUTools(windowColor,
-	($=), initialize, createWindow, loop,
+import Graphics.UI.GLUT.Turtle.GLUTools(windowColor, glWriteString,
+	initialize, createWindow, loop,
 	displayAction, keyboardMouseCallback,
 	swapBuffers, currentWindow,
 	windowSize, setWindowSize, leaveUnless, glDrawLine,
@@ -162,7 +162,7 @@ undoField f = do
 	atomicModifyIORef_ (fActions f) tail
 
 closeField :: Field -> IO ()
-closeField _ = return () -- G.leaveMainLoop
+closeField _ = return ()
 
 topleft, center :: Field -> IO ()
 topleft = flip writeIORef CoordTopLeft . fCoordinates
@@ -238,23 +238,17 @@ positionToVertex3 f (TopLeft x y) = do
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
-writeString f _fname size clr (Center x_ y_) str =
+writeString f _fname size clr (Center x_ y_) str = do
+	(w, h) <- readIORef $ fSize f
+	let	ratio = 3.5 * fromIntegral h
+		size' = size / 15
+		x_ratio = 2 * ratio / fromIntegral w
+		y_ratio = 2 * ratio / fromIntegral h
+		x = x_ratio * fromRational (toRational $ x_ / size')
+		y = y_ratio * fromRational (toRational $ y_ / size')
+		s = 1 / ratio * fromRational (toRational size')
+		action = glWriteString s (colorToColor4 clr) x y str
 	atomicModifyIORef_ (fActions f) (Just action :)
-	where
-	action = G.preservingMatrix $ do
-		(w, h) <- readIORef $ fSize f
-		let	size' = size / 15
-			ratio = 3.5 * fromIntegral h
-			x_ratio = 2 * ratio / fromIntegral w
-			y_ratio = 2 * ratio / fromIntegral h
-			x = x_ratio * fromRational (toRational $ x_ / size')
-			y = y_ratio * fromRational (toRational $ y_ / size')
-			s = 1 / ratio * fromRational (toRational size')
-		G.color $ colorToColor4 clr
-		G.scale (s :: G.GLfloat) (s :: G.GLfloat) (s :: G.GLfloat)
-		G.clearColor $= G.Color4 0 0 0 0
-		G.translate (G.Vector3 x y 0 :: G.Vector3 G.GLfloat)
-		G.renderString G.Roman str
 writeString _ _ _ _ _ _ = error "writeString: not implemented"
 
 drawImage :: Field -> FilePath -> Position -> Double -> Double -> IO ()

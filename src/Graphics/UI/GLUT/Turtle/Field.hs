@@ -53,8 +53,7 @@ import Graphics.UI.GLUT.Turtle.Console(
 	Console, openConsole, consolePrompt, consoleOutput,
 	consoleKeyboard, consoleCommand)
 import Graphics.UI.GLUT.Turtle.GLUTools(
-	Window, Key(..), KeyState(..), Modifiers, Vertex3(..), Color4(..),
-	GLfloat,
+	Window, Key(..), KeyState(..), Modifiers,
 	initialize, createWindow, loop, displayAction, keyboardMouseCallback,
 	currentWindow, swapBuffers, leaveUnless,
 	windowColor, windowSize, setWindowSize,
@@ -117,7 +116,7 @@ openField name w h = do
 	displayAction fupdate $ do
 		currentWindow fwindow
 		writeIORef fsize =<< windowSize
-		windowColor . colorToColor4 . head =<< readIORef fbgcolor
+		windowColor . colorToInts . head =<< readIORef fbgcolor
 		sequence_ . reverse . catMaybes =<< readIORef factions
 		join $ readIORef faction
 		swapBuffers
@@ -193,31 +192,13 @@ drawLine f w c p q = do
 
 makePolygonAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 makePolygonAction f ps c lc lw = do
-	vs' <- mapM (positionToVertex3 f) ps
-	drawPolygon vs' (colorToColor4 c) (colorToColor4 lc) (doubleToGLfloat lw)
+	ps' <- mapM (positionToDoubles f) ps
+	drawPolygon ps' (colorToInts c) (colorToInts lc) lw
 
 makeLineAction :: Field -> Double -> Color -> Position -> Position -> IO ()
 makeLineAction f w c p_ q_ = do
-	[p, q] <- mapM (positionToVertex3 f) [p_, q_]
-	glDrawLine (colorToColor4 c) (doubleToGLfloat w) p q
-
-
-doubleToGLfloat :: Double -> GLfloat
-doubleToGLfloat = fromRational . toRational
-positionToVertex3 :: Field -> Position -> IO (Vertex3 GLfloat)
-positionToVertex3 f (Center x y) = do
-	(w, h) <- readIORef $ fSize f
-	return $ Vertex3 (doubleToGLfloat $ 2 * x / fromIntegral w)
-		(doubleToGLfloat $ 2 * y / fromIntegral h) 0
-positionToVertex3 f (TopLeft x y) = do
-	(w, h) <- readIORef $ fSize f
-	return $ Vertex3 (doubleToGLfloat $ 2 * x / fromIntegral w - 1)
-		(doubleToGLfloat $ 1 - 2 * y / fromIntegral h) 0
-
-colorToColor4 :: Color -> Color4 GLfloat
-colorToColor4 (RGB r g b) = Color4
-	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
-colorToColor4 _ = error "colorToColor4: not implemented"
+	[p, q] <- mapM (positionToDoubles f) [p_, q_]
+	glDrawLine (colorToInts c) w p q
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
@@ -227,10 +208,10 @@ writeString f _fname size clr (Center x_ y_) str = do
 		size' = size / 15
 		x_ratio = 2 * ratio / fromIntegral w
 		y_ratio = 2 * ratio / fromIntegral h
-		x = x_ratio * (doubleToGLfloat $ x_ / size')
-		y = y_ratio * (doubleToGLfloat $ y_ / size')
-		s = 1 / ratio * (doubleToGLfloat size')
-		action = glWriteString s (colorToColor4 clr) x y str
+		x = x_ratio * (x_ / size')
+		y = y_ratio * (y_ / size')
+		s = 1 / ratio * (size')
+		action = glWriteString s (colorToInts clr) (x, y) str
 	atomicModifyIORef_ (fActions f) (Just action :)
 writeString _ _ _ _ _ _ = error "writeString: not implemented"
 
@@ -250,16 +231,14 @@ fillPolygon f ps clr lc lw = do
 drawCharacter :: Field -> Color -> Color -> [Position] -> Double -> IO ()
 drawCharacter f fclr clr sh lw = do
 	makePolygonAction f sh fclr clr lw
-	writeIORef (fAction f) $
-		makePolygonAction f sh fclr clr lw
+	writeIORef (fAction f) $ makePolygonAction f sh fclr clr lw
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f fclr clr sh lw p q = do
-	writeIORef (fAction f) $ do
-		makeLineAction f lw clr p q
-		makePolygonAction f sh fclr clr lw
+	writeIORef (fAction f) $
+		makeLineAction f lw clr p q >> makePolygonAction f sh fclr clr lw
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 clearCharacter :: Field -> IO ()
@@ -285,3 +264,17 @@ onkeypress _ _ = return ()
 
 ontimer :: Field -> Int -> IO Bool -> IO ()
 ontimer _ _ _ = return ()
+
+--------------------------------------------------------------------------------
+
+positionToDoubles :: Field -> Position -> IO (Double, Double)
+positionToDoubles f (Center x y) = do
+	(w, h) <- readIORef $ fSize f
+	return (2 * x / fromIntegral w, 2 * y / fromIntegral h)
+positionToDoubles f (TopLeft x y) = do
+	(w, h) <- readIORef $ fSize f
+	return (2 * x / fromIntegral w - 1, 1 - 2 * y / fromIntegral h)
+
+colorToInts :: Color -> (Int, Int, Int)
+colorToInts (RGB r g b) = (fromIntegral r, fromIntegral g, fromIntegral b)
+colorToInts _ = error "colorToInts: not implemented"

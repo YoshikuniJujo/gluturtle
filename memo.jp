@@ -332,3 +332,16 @@ undoField は、atomicModifyIORef を使うべきだろう。
 closeField は走っている turtle とのかねあいでわりとめんどくさいので、
 あとにしよう。
 forkField と flushField も後回しだ。
+
+GL... といった型は、GLUTools 内でのみ使うようにしよう。
+GLUTools から公開する型はすべて、Double や (Double, Double) 等を使うようにする。
+また Color や Position については難しいところだが、
+(Int, Int, Int) や (Double, Double) を使ったほうがとりあえずは良さそうだ。
+
+いや、むしろ、GLUTools の段階で、Color や Position を使うべきか。
+しかし、Color の方はいいが Position の方は window の size が必要になってくるので、
+ちょっと問題があるかもしれない。
+
+ので、(Int, Int, Int) や (Double, Double) を使うようにしよう。
+そのためには positionToVertex3 を、positionToDoubles と DoublesToVertex3 に分解
+する必要があるだろう。

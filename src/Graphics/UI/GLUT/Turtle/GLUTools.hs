@@ -27,7 +27,7 @@ import Graphics.UI.GLUT.Turtle.Triangles
 
 import Graphics.UI.GLUT hiding (
 	initialize, createWindow, keyboardMouseCallback, currentWindow,
-	windowSize, Key(..), SpecialKey)
+	windowSize, Key(..), SpecialKey, Color)
 import qualified Graphics.UI.GLUT as G
 import System.Environment
 import Control.Monad
@@ -137,8 +137,8 @@ timerAction changed act = do
 timerAction' :: IO a -> IO ()
 timerAction' act = act >> G.addTimerCallback 10 (timerAction' act)
 
-windowColor :: G.Color4 G.GLfloat -> IO ()
-windowColor clr = G.preservingMatrix $ do
+windowColor_ :: G.Color4 G.GLfloat -> IO ()
+windowColor_ clr = G.preservingMatrix $ do
 	G.color clr
 	G.renderPrimitive G.Quads $ mapM_ G.vertex [
 		G.Vertex2 (-1) (-1),
@@ -160,16 +160,16 @@ setWindowSize w h = (G.windowSize $=) $ Size (fromIntegral w) (fromIntegral h)
 leaveUnless :: Bool -> IO ()
 leaveUnless = flip unless G.leaveMainLoop
 
-glDrawLine :: G.Color4 G.GLfloat -> G.GLfloat ->
+glDrawLine_ :: G.Color4 G.GLfloat -> G.GLfloat ->
 	G.Vertex3 G.GLfloat -> G.Vertex3 G.GLfloat -> IO ()
-glDrawLine c w p q = G.preservingMatrix $ do
+glDrawLine_ c w p q = G.preservingMatrix $ do
 	G.lineWidth $= w
 	G.color c
 	G.renderPrimitive G.Lines $ mapM_ G.vertex [p, q]
 
-drawPolygon :: [G.Vertex3 G.GLfloat] -> G.Color4 G.GLfloat -> G.Color4 G.GLfloat ->
+drawPolygon_ :: [G.Vertex3 G.GLfloat] -> G.Color4 G.GLfloat -> G.Color4 G.GLfloat ->
 	G.GLfloat -> IO ()
-drawPolygon ps c lc lw = G.preservingMatrix $ do
+drawPolygon_ ps c lc lw = G.preservingMatrix $ do
 	G.color c
 	G.renderPrimitive G.Triangles $ mapM_ G.vertex ps'
 	G.lineWidth $= lw
@@ -188,15 +188,43 @@ posToVertex3 :: Pos -> G.Vertex3 G.GLfloat
 posToVertex3 (x, y) =
 	G.Vertex3 (fromRational $ toRational x) (fromRational $ toRational y) 0
 
-type Pos = (Double, Double)
 triangleToPositions :: [(Pos, Pos, Pos)] -> [Pos]
 triangleToPositions [] = []
 triangleToPositions ((a, b, c) : rest) = a : b : c : triangleToPositions rest
 
-glWriteString ::
+glWriteString_ ::
 	G.GLfloat -> G.Color4 G.GLfloat -> G.GLfloat -> G.GLfloat -> String -> IO ()
-glWriteString s clr x y str = G.preservingMatrix $ do
+glWriteString_ s clr x y str = G.preservingMatrix $ do
 	G.color clr
 	G.scale (s :: G.GLfloat) (s :: G.GLfloat) (s :: G.GLfloat)
 	G.translate (G.Vector3 x y 0 :: G.Vector3 G.GLfloat)
 	G.renderString G.Roman str
+
+drawPolygon :: [Pos] -> Clr -> Clr -> Double -> IO ()
+drawPolygon ps c lc lw = drawPolygon_ (map doublesToVertex3 ps) (intsToColor4 c)
+	(intsToColor4 lc) (doubleToGLfloat lw)
+
+type Pos = (Double, Double)
+type Clr = (Int, Int, Int)
+
+doublesToVertex3 :: (Double, Double) -> Vertex3 GLfloat
+doublesToVertex3 (x, y) = Vertex3 (doubleToGLfloat x) (doubleToGLfloat y) 0
+
+intsToColor4 :: (Int, Int, Int) -> Color4 GLfloat
+intsToColor4 (r, g, b) = Color4
+	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
+
+doubleToGLfloat :: Double -> GLfloat
+doubleToGLfloat = fromRational . toRational
+
+glDrawLine :: (Int, Int, Int) -> Double -> Pos -> Pos -> IO ()
+glDrawLine c w p q = glDrawLine_ (intsToColor4 c) (doubleToGLfloat w)
+	(doublesToVertex3 p) (doublesToVertex3 q)
+
+glWriteString :: Double -> Clr -> Pos -> String -> IO ()
+glWriteString size clr (x, y) str =
+	glWriteString_ (doubleToGLfloat size) (intsToColor4 clr)
+		(doubleToGLfloat x) (doubleToGLfloat y) str
+
+windowColor :: Clr -> IO ()
+windowColor clr = windowColor_ $ intsToColor4 clr

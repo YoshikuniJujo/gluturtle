@@ -61,6 +61,8 @@ import Graphics.UI.GLUT.Turtle.GLUTools(
 	glDrawLine, drawPolygon, glWriteString)
 import Text.XML.YJSVG(Position(..), Color(..))
 
+import Control.Arrow((***))
+import Control.Applicative((<$>))
 import Control.Monad(when, join)
 import Control.Concurrent(ThreadId, forkIO)
 import Data.Maybe(isNothing, catMaybes)
@@ -160,9 +162,7 @@ coordinates :: Field -> IO Coordinates
 coordinates = readIORef . fCoordinates
 
 fieldSize :: Field -> IO (Double, Double)
-fieldSize f = do
-	(w, h) <- readIORef $ fSize f
-	return (fromIntegral w, fromIntegral h)
+fieldSize f = (fromIntegral *** fromIntegral) <$> readIORef (fSize f)
 
 --------------------------------------------------------------------------------
 
@@ -181,48 +181,43 @@ fieldColor f clr = do
 
 setFieldSize :: Field -> Double -> Double -> IO ()
 setFieldSize f w_ h_ = do
-	let	w = round w_
-		h = round h_
+	let	(w, h) = (round *** round) (w_, h_)
 	writeIORef (fSize f) (w, h)
 	currentWindow $ fWindow f
 	setWindowSize w h
 
 drawLine :: Field -> Double -> Color -> Position -> Position -> IO ()
 drawLine f w c p q = do
-	atomicModifyIORef_ (fActions f) (Just (makeLineAction f p q c w) :)
 	atomicModifyIORef_ (fUpdate f) (+ 1)
+	atomicModifyIORef_ (fActions f) (Just (makeLineAction f w c p q) :)
 
-makeLineAction :: Field -> Position -> Position -> Color -> Double -> IO ()
-makeLineAction f p q c w = do
-	pp <- positionToVertex3 f p
-	qq <- positionToVertex3 f q
-	glDrawLine (colorToColor4 c) (fromRational $ toRational w) pp qq
+makePolygonAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
+makePolygonAction f ps c lc lw = do
+	vs' <- mapM (positionToVertex3 f) ps
+	drawPolygon vs' (colorToColor4 c) (colorToColor4 lc) (doubleToGLfloat lw)
+
+makeLineAction :: Field -> Double -> Color -> Position -> Position -> IO ()
+makeLineAction f w c p_ q_ = do
+	[p, q] <- mapM (positionToVertex3 f) [p_, q_]
+	glDrawLine (colorToColor4 c) (doubleToGLfloat w) p q
+
+
+doubleToGLfloat :: Double -> GLfloat
+doubleToGLfloat = fromRational . toRational
+positionToVertex3 :: Field -> Position -> IO (Vertex3 GLfloat)
+positionToVertex3 f (Center x y) = do
+	(w, h) <- readIORef $ fSize f
+	return $ Vertex3 (doubleToGLfloat $ 2 * x / fromIntegral w)
+		(doubleToGLfloat $ 2 * y / fromIntegral h) 0
+positionToVertex3 f (TopLeft x y) = do
+	(w, h) <- readIORef $ fSize f
+	return $ Vertex3 (doubleToGLfloat $ 2 * x / fromIntegral w - 1)
+		(doubleToGLfloat $ 1 - 2 * y / fromIntegral h) 0
 
 colorToColor4 :: Color -> Color4 GLfloat
 colorToColor4 (RGB r g b) = Color4
 	(fromIntegral r / 255) (fromIntegral g / 255) (fromIntegral b / 255) 0
 colorToColor4 _ = error "colorToColor4: not implemented"
-
-makeCharacterAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
-makeCharacterAction f ps c lc lw = do
-	vs' <- mapM (positionToVertex3 f) ps
-	let	c' = colorToColor4 c
-		lc' = colorToColor4 lc
-		lw' = fromRational $ toRational lw
-	drawPolygon vs' c' lc' lw'
-
-positionToVertex3 :: Field -> Position -> IO (Vertex3 GLfloat)
-positionToVertex3 f (Center x y) = do
-	(w, h) <- readIORef $ fSize f
-	return $ Vertex3
-		(fromRational $ 2 * toRational x / fromIntegral w)
-		(fromRational $ 2 * toRational y / fromIntegral h)
-		0
-positionToVertex3 f (TopLeft x y) = do
-	(w, h) <- readIORef $ fSize f
-	let	x' = 2 * toRational x / fromIntegral w - 1
-		y' = 1 - 2 * toRational y / fromIntegral h
-	return $ Vertex3 (fromRational x') (fromRational y') 0
 
 writeString :: Field -> String -> Double -> Color -> Position ->
 	String -> IO ()
@@ -232,9 +227,9 @@ writeString f _fname size clr (Center x_ y_) str = do
 		size' = size / 15
 		x_ratio = 2 * ratio / fromIntegral w
 		y_ratio = 2 * ratio / fromIntegral h
-		x = x_ratio * fromRational (toRational $ x_ / size')
-		y = y_ratio * fromRational (toRational $ y_ / size')
-		s = 1 / ratio * fromRational (toRational size')
+		x = x_ratio * (doubleToGLfloat $ x_ / size')
+		y = y_ratio * (doubleToGLfloat $ y_ / size')
+		s = 1 / ratio * (doubleToGLfloat size')
 		action = glWriteString s (colorToColor4 clr) x y str
 	atomicModifyIORef_ (fActions f) (Just action :)
 writeString _ _ _ _ _ _ = error "writeString: not implemented"
@@ -247,24 +242,24 @@ fillRectangle _f _p _w _h _clr = return ()
 
 fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f ps clr lc lw = do
-	atomicModifyIORef_ (fActions f) (Just (makeCharacterAction f ps clr lc lw) :)
+	atomicModifyIORef_ (fActions f) (Just (makePolygonAction f ps clr lc lw) :)
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 --------------------------------------------------------------------------------
 
 drawCharacter :: Field -> Color -> Color -> [Position] -> Double -> IO ()
 drawCharacter f fclr clr sh lw = do
-	makeCharacterAction f sh fclr clr lw
+	makePolygonAction f sh fclr clr lw
 	writeIORef (fAction f) $
-		makeCharacterAction f sh fclr clr lw
+		makePolygonAction f sh fclr clr lw
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
 drawCharacterAndLine f fclr clr sh lw p q = do
 	writeIORef (fAction f) $ do
-		makeLineAction f p q clr lw
-		makeCharacterAction f sh fclr clr lw
+		makeLineAction f lw clr p q
+		makePolygonAction f sh fclr clr lw
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 clearCharacter :: Field -> IO ()

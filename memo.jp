@@ -328,3 +328,7 @@ drawPolygon は、Vertex3 を取るほうがきれいだが、
 2012.10.23 Tue.
 
 undoField は、atomicModifyIORef を使うべきだろう。
+
+closeField は走っている turtle とのかねあいでわりとめんどくさいので、
+あとにしよう。
+forkField と flushField も後回しだ。

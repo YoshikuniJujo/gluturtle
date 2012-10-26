@@ -246,7 +246,9 @@ drawCharacterAndLine f fclr clr sh lw p q = do
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 clearCharacter :: Field -> IO ()
-clearCharacter f = writeIORef (fAction f) $ return ()
+clearCharacter f = do
+	atomicModifyIORef_ (fUpdate f) (+ 1)
+	writeIORef (fAction f) $ return ()
 
 --------------------------------------------------------------------------------
 

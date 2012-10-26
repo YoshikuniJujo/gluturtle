@@ -53,7 +53,9 @@ consolePrompt :: Console -> String -> IO ()
 consolePrompt = writeIORef . cPrompt
 
 consoleOutput :: Console -> String -> IO ()
-consoleOutput console = atomicModifyIORef_ (cHistory console) . (:)
+consoleOutput console str = do
+	atomicModifyIORef_ (cUpdate console) succ
+	atomicModifyIORef_ (cHistory console) (str :)
 
 consoleKeyboard :: Console -> Char -> KeyState -> Modifiers -> IO ()
 consoleKeyboard console '\r' Down _ = do

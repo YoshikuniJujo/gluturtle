@@ -32,6 +32,7 @@ module Graphics.UI.GLUT.Turtle.Field(
 	fillPolygon,
 	writeString,
 	drawImage,
+	clearField,
 	undoField,
 
 	-- ** to Character
@@ -225,6 +226,9 @@ fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
 fillPolygon f ps clr lc lw = do
 	atomicModifyIORef_ (fActions f) (Just (makePolygonAction f ps clr lc lw) :)
 	atomicModifyIORef_ (fUpdate f) (+ 1)
+
+clearField :: Field -> IO ()
+clearField f = writeIORef (fActions f) []
 
 --------------------------------------------------------------------------------
 

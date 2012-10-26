@@ -47,7 +47,7 @@ import Graphics.UI.GLUT.Turtle.Field(consolePrompt, initialize, setFieldSize,
 	oncommand, onclick, onrelease, ondrag, onmotion, onkeypress, ontimer,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
 	drawImage, undoField, drawCharacter, drawCharacterAndLine,
-	consoleOutput)
+	consoleOutput, clearField)
 import Text.XML.YJSVG(SVG(..), Position(..))
 import qualified Text.XML.YJSVG as S(topleft)
 
@@ -74,7 +74,7 @@ moveTurtle f t0 t1 = do
 			drawTtl (direction t1) p >> threadDelay (interval t0)
 		fl $ drawTtl (direction t1) $ position t1
 	when (visible t0 && not (visible t1)) $ fl $ clearCharacter f
---	when (clear t1) $ fl $ clearLayer l
+	when (clear t1) $ fl $ clearField f
 	unless (undo t1) $ fl $ maybe (return ()) (drawSVG f) (draw t1)
 	where
 	fl = flushField f $ stepbystep t0

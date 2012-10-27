@@ -169,6 +169,7 @@ glDrawLine_ c w p q = G.preservingMatrix $ do
 
 drawPolygon_ :: [G.Vertex3 G.GLfloat] -> G.Color4 G.GLfloat -> G.Color4 G.GLfloat ->
 	G.GLfloat -> IO ()
+drawPolygon_ [] _ _ _ = error "bad polygon"
 drawPolygon_ ps c lc lw = G.preservingMatrix $ do
 	G.color c
 	G.renderPrimitive G.Triangles $ mapM_ G.vertex ps'

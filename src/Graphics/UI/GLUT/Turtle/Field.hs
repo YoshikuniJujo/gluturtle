@@ -192,6 +192,7 @@ drawLine f w c p q = do
 	atomicModifyIORef_ (fActions f) (Just (makeLineAction f w c p q) :)
 
 makePolygonAction :: Field -> [Position] -> Color -> Color -> Double -> IO ()
+makePolygonAction _ [] _ _ _ = error "makePolygonAction: no points"
 makePolygonAction f ps c lc lw = do
 	ps' <- mapM (positionToDoubles f) ps
 	drawPolygon ps' (colorToInts c) (colorToInts lc) lw
@@ -223,6 +224,7 @@ fillRectangle :: Field -> Position -> Double -> Double -> Color -> IO ()
 fillRectangle _f _p _w _h _clr = return ()
 
 fillPolygon :: Field -> [Position] -> Color -> Color -> Double -> IO ()
+fillPolygon _ [] _ _ _ = error "fillPolygon: no points"
 fillPolygon f ps clr lc lw = do
 	atomicModifyIORef_ (fActions f) (Just (makePolygonAction f ps clr lc lw) :)
 	atomicModifyIORef_ (fUpdate f) (+ 1)
@@ -233,6 +235,7 @@ clearField f = writeIORef (fActions f) []
 --------------------------------------------------------------------------------
 
 drawCharacter :: Field -> Color -> Color -> [Position] -> Double -> IO ()
+drawCharacter _ _ _ [] _ = error "drawCharacter: no points"
 drawCharacter f fclr clr sh lw = do
 	makePolygonAction f sh fclr clr lw
 	writeIORef (fAction f) $ makePolygonAction f sh fclr clr lw
@@ -240,6 +243,7 @@ drawCharacter f fclr clr sh lw = do
 
 drawCharacterAndLine ::	Field -> Color -> Color -> [Position] ->
 	Double -> Position -> Position -> IO ()
+drawCharacterAndLine _ _ _ [] _ _ _ = error "drawCharacterAndLine: no points"
 drawCharacterAndLine f fclr clr sh lw p q = do
 	writeIORef (fAction f) $
 		makeLineAction f lw clr p q >> makePolygonAction f sh fclr clr lw

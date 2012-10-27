@@ -119,6 +119,8 @@ directions t0 t1 = case directionStep t0 of
 
 drawTurtle :: Field -> TurtleState -> Double -> Position ->
 	Maybe Position -> IO ()
-drawTurtle f ts@TurtleState{fillcolor = fclr, pencolor = clr} dir pos = maybe
-	(drawCharacter f fclr clr (makeShape ts dir pos) (pensize ts))
-	(drawCharacterAndLine f fclr clr (makeShape ts dir pos) (pensize ts) pos)
+drawTurtle f ts@TurtleState{fillcolor = fclr, pencolor = clr} dir pos
+	| [] <- makeShape ts dir pos = const $ return () -- error $ show ts
+	| otherwise = maybe
+		(drawCharacter f fclr clr (makeShape ts dir pos) (pensize ts))
+		(drawCharacterAndLine f fclr clr (makeShape ts dir pos) (pensize ts) pos)

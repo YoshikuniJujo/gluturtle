@@ -33,6 +33,7 @@ data TurtleState = TurtleState {
 	positionStep :: Maybe Double,
 	directionStep :: Maybe Double,
 	interval :: Int}
+	deriving Show
 
 initTurtleState :: TurtleState
 initTurtleState = TurtleState {

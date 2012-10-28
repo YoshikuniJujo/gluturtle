@@ -44,7 +44,7 @@ processInput _ _ _ "0very1very2very3very4very5very6very7very8very9very0very-long
 processInput _ _ t "hide" = hideturtle t >> return True
 processInput _ _ t "bred" = bgcolor t ((255, 0, 0) :: (Int, Int, Int)) >> return True
 processInput _ _ t "bgreen" = bgcolor t ((0, 255, 0) :: (Int, Int, Int)) >> return True
-processInput _ _ t "home" = goto t 0 0 >> return True
+-- processInput _ _ t "home" = goto t 0 0 >> return True
 processInput _ _ t "undo" = undo t >> return True
 processInput f _ _ "size" = setFieldSize f 100 200 >> return True
 processInput f _ _ "topleft" = topleft f >> return True
@@ -52,4 +52,5 @@ processInput f _ _ "center" = center f >> return True
 processInput _ _ t "goto100" = goto t 100 100 >> return True
 processInput _ _ t "clear" = clear t >> return True
 processInput _ _ t "svg" = getSVG t >>= print >> return True
+processInput _ _ t "home" = home t >> return True
 processInput _ _ _ _ = return True

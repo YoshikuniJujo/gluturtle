@@ -3,19 +3,22 @@ module Graphics.UI.GLUT.Turtle.Triangles(toTriangles) where
 import Graphics.UI.GLUT.Turtle.TriangleTools
 
 isHoleRight :: [Pos] -> Bool
+isHoleRight ps
+	| length (deleteOnline $ deletePoint ps) < 3 = True
 isHoleRight ps = isRight tri
 	where
-	i = far ps
-	tri = index3 ps i
+	i = far (deleteOnline $ deletePoint ps)
+	tri = index3 (deleteOnline $ deletePoint ps) i
 
 toTriangles :: [Pos] -> [(Pos, Pos, Pos)]
 toTriangles ps
+	| length ps < 3 = []
 	| isHoleRight ps = toTriangles' ps
 	| otherwise = toTriangles' $ reverse ps
 
 toTriangles' :: [Pos] -> [(Pos, Pos, Pos)]
 toTriangles' ps
-	| length ps < 3 = []
+	| length (deleteOnline $ deletePoint ps) < 3 = []
 	| otherwise = toTrianglesTop $ deleteOnline $ deletePoint ps
 
 deletePoint :: Eq a => [a] -> [a]

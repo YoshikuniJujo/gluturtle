@@ -28,7 +28,8 @@ dol [a, b] = [a, b]
 dol (a : ps@(b : ps'@(c : _)))
 	| online (a, b, c) = a : dol ps'
 	| otherwise = a : dol ps
-dol p = error $ "dol: not implemented " ++ show p
+dol ps = ps
+-- dol p = error $ "dol: not implemented " ++ show p
 
 maximumIndex :: Ord a => [a] -> Int
 maximumIndex = fst . maximumIndexGen
@@ -87,7 +88,7 @@ type Pos = (Double, Double)
 isRight :: (Pos, Pos, Pos) -> Bool
 isRight ((xa, ya), (xb, yb), (xc, yc))
 	| 0 < xd * ye - xe * yd = True
-	| 0 == xd * ye - xe * yd = error "bad triangle"
+	| 0 == xd * ye - xe * yd = error "isRight: bad triangle"
 	| otherwise = False
 	where
 	(xd, yd) = (xa - xb, ya - yb)

@@ -345,3 +345,7 @@ GLUTools から公開する型はすべて、Double や (Double, Double) 等を�
 ので、(Int, Int, Int) や (Double, Double) を使うようにしよう。
 そのためには positionToVertex3 を、positionToDoubles と DoublesToVertex3 に分解
 する必要があるだろう。
+
+2012.10.27 Sat.
+
+undo と fieldColor と clear のかねあいで結果がおかしくなるのを修正する必要がある。

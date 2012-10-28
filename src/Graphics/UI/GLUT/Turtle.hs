@@ -119,8 +119,9 @@ import Text.XML.YJSVG(SVG(..), Position(..), Color(..))
 import qualified Text.XML.YJSVG as S(center, topleft)
 
 import Control.Concurrent(killThread, newChan, writeChan, getChanContents)
-import Control.Monad(replicateM_, zipWithM_)
+import Control.Applicative((<$>))
 import Control.Arrow((&&&))
+import Control.Monad(replicateM_, zipWithM_)
 import Data.IORef(IORef, newIORef, readIORef)
 import Data.IORef.Tools(atomicModifyIORef_)
 import Data.Fixed(mod')
@@ -168,7 +169,14 @@ runInputs :: Turtle -> [TurtleInput] -> IO ()
 runInputs = mapM_ . input
 
 getSVG :: Turtle -> IO [SVG]
-getSVG = fmap reverse . flip info drawed
+getSVG = (<$>) processFill . fmap reverse . flip info drawed
+
+processFill :: [SVG] -> [SVG]
+processFill svgs = last (filter isFill svgs) : filter (not . isFill) svgs
+
+isFill :: SVG -> Bool
+isFill (Fill _) = True
+isFill _ = False
 
 convertPosition :: Turtle -> Position -> IO Position
 convertPosition t p = do

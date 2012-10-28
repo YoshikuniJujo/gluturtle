@@ -51,4 +51,5 @@ processInput f _ _ "topleft" = topleft f >> return True
 processInput f _ _ "center" = center f >> return True
 processInput _ _ t "goto100" = goto t 100 100 >> return True
 processInput _ _ t "clear" = clear t >> return True
+processInput _ _ t "svg" = getSVG t >>= print >> return True
 processInput _ _ _ _ = return True

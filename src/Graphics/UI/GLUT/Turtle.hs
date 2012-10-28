@@ -172,7 +172,11 @@ getSVG :: Turtle -> IO [SVG]
 getSVG = (<$>) processFill . fmap reverse . flip info drawed
 
 processFill :: [SVG] -> [SVG]
-processFill svgs = last (filter isFill svgs) : filter (not . isFill) svgs
+processFill svgs
+	| [] <- fills = svgs
+	| otherwise = last fills : filter (not . isFill) svgs
+	where
+	fills = filter isFill svgs
 
 isFill :: SVG -> Bool
 isFill (Fill _) = True

@@ -2,7 +2,7 @@ build-type:	Simple
 cabal-version:	>= 1.6
 
 name:		gluturtle
-version:	0.0.56
+version:	0.0.57
 stability:	alpha
 author:		Yoshikuni Jujo <PAF01143@nifty.ne.jp>
 maintainer:	Yoshikuni Jujo <PAF01143@nifty.ne.jp>
@@ -32,14 +32,3 @@ library
     Graphics.UI.GLUT.Turtle.Triangles, Graphics.UI.GLUT.Turtle.TriangleTools,
     Graphics.UI.GLUT.Turtle.GLUTools,
     Graphics.UI.GLUT.Turtle.Console
-
-executable		testTurtle
-  Hs-source-dirs:	tests, src
-  Main-is:		testGLUT.hs
-  Ghc-options:		-Wall
-
-executable		randomTurtle
-  Hs-source-dirs:	tests, src
-  Main-is:		randomTurtle.hs
-  Build-depends:	random
-  Ghc-options:		-Wall

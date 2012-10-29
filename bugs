@@ -12,3 +12,4 @@
 * use IORef with thread
 * don't work killTurtle if randomTurtle run
 * fieldColor should use Layers
+* bgcolor is cleared in SVG by clear but not in field

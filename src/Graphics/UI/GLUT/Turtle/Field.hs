@@ -230,7 +230,9 @@ fillPolygon f ps clr lc lw = do
 	atomicModifyIORef_ (fUpdate f) (+ 1)
 
 clearField :: Field -> IO ()
-clearField f = writeIORef (fActions f) []
+clearField f = do
+	writeIORef (fBgcolor f) [RGB 255 255 255]
+	writeIORef (fActions f) []
 
 --------------------------------------------------------------------------------
 

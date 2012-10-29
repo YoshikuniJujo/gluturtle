@@ -83,7 +83,7 @@ nextTurtle t@TurtleState{pencolor = clr} (Write fnt sz str) = reset t `set`
 	Just (Text (position t) sz clr fnt str)
 nextTurtle t (PutImage fp w h) = reset t `set` Just (Image (position t) w h fp)
 nextTurtle t (Undonum un) = (reset t){undonum = un}
-nextTurtle t Clear = (reset t){clear = True, drawed = []}
+nextTurtle t Clear = (reset t){clear = True, drawed = [Fill (RGB 255 255 255)]}
 nextTurtle t (Sleep time) = (reset t){sleep = Just time}
 nextTurtle t Flush = (reset t){flush = True}
 nextTurtle t (Shape sh) = (reset t){shape = sh}

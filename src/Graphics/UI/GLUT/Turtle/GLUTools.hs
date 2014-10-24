@@ -25,9 +25,16 @@ module Graphics.UI.GLUT.Turtle.GLUTools (
 
 import Graphics.UI.GLUT.Turtle.Triangles
 
+{-
 import Graphics.UI.GLUT hiding (
 	initialize, createWindow, keyboardMouseCallback, currentWindow,
-	windowSize, Key(..), SpecialKey, Color)
+	windowSize, Key(..), SpecialKey, Color, keyboardCallback)
+	-}
+import Graphics.UI.GLUT (
+	($=), initialDisplayMode, DisplayMode(RGBMode, DoubleBuffered), Window,
+	initialWindowSize, Size(Size), Position(Position), Vertex3(Vertex3),
+	GLfloat, Color4(Color4), KeyState(..), Modifiers, swapBuffers
+ )
 import qualified Graphics.UI.GLUT as G
 import System.Environment
 import Control.Monad

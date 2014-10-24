@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Graphics.UI.GLUT.Turtle.Move(
 	initialize,
 
@@ -48,7 +50,7 @@ import Graphics.UI.GLUT.Turtle.Field(consolePrompt, initialize, setFieldSize,
 	fieldColor, drawLine, fillRectangle, fillPolygon, writeString,
 	drawImage, undoField, drawCharacter, drawCharacterAndLine,
 	consoleOutput, clearField)
-import Text.XML.YJSVG(SVG(..), Position(..))
+import Text.XML.YJSVG(SVG(..), Position(..), Font(..))
 import qualified Text.XML.YJSVG as S(topleft)
 
 import Control.Concurrent(threadDelay)
@@ -89,7 +91,7 @@ drawSVG f (Line p0 p1 clr lw) = drawLine f lw clr p0 p1
 drawSVG f (Rect pos w h 0 fc _) = fillRectangle f pos w h fc
 drawSVG f (Polyline ps fc lc lw) = fillPolygon f ps fc lc lw
 drawSVG f (Fill clr) = fieldColor f clr
-drawSVG f (Text pos sz clr fnt str) = writeString f fnt sz clr pos str
+drawSVG f (Text pos sz clr (Font fnt _) str) = writeString f fnt sz clr pos str
 drawSVG f (Image pos w h fp) = drawImage f fp pos w h
 drawSVG _ _ = error "not implemented"
 

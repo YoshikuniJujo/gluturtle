@@ -1,7 +1,7 @@
 module Graphics.UI.GLUT.Turtle.Input(TurtleInput(..), turtleSeries) where
 
 import Graphics.UI.GLUT.Turtle.State(TurtleState(..), initTurtleState, makeShape)
-import Text.XML.YJSVG(SVG(..), Color(..), Position(..))
+import Text.XML.YJSVG(SVG(..), Color(..), Position(..), Font(..), FontWeight(..))
 
 --------------------------------------------------------------------------------
 
@@ -80,7 +80,8 @@ nextTurtle t@TurtleState{pencolor = clr, fillcolor = fclr} Stamp = reset t `set`
 	Just (Polyline (makeShape t (direction t) (position t)) fclr clr $
 		pensize t)
 nextTurtle t@TurtleState{pencolor = clr} (Write fnt sz str) = reset t `set`
-	Just (Text (position t) sz clr fnt str)
+--	Just (Text (position t) sz clr fnt str)
+	Just (Text (position t) sz clr (Font fnt Normal) str)
 nextTurtle t (PutImage fp w h) = reset t `set` Just (Image (position t) w h fp)
 nextTurtle t (Undonum un) = (reset t){undonum = un}
 nextTurtle t Clear = (reset t){clear = True, drawed = [Fill (RGB 255 255 255)]}

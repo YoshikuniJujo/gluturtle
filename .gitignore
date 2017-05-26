@@ -10,3 +10,7 @@
 /*.svg
 /ebuilds/
 /tmp/
+/.stack-work/
+*.hi
+*.o
+/bin/
